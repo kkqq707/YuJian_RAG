@@ -1,0 +1,76 @@
+// ============================================================
+// 企业智库 AI — 通用工具类
+// ============================================================
+
+@use 'variables.scss' as *;
+
+// ---- 文字 ----
+.text-primary { color: $color-text-primary; }
+.text-secondary { color: $color-text-secondary; }
+.text-tertiary { color: $color-text-tertiary; }
+.text-brand { color: $color-primary; }
+.text-success { color: $color-success; }
+.text-warning { color: $color-warning; }
+.text-danger { color: $color-danger; }
+.text-xs { font-size: $font-size-xs; }
+.text-sm { font-size: $font-size-sm; }
+.text-base { font-size: $font-size-base; }
+.text-lg { font-size: $font-size-lg; }
+.text-xl { font-size: $font-size-xl; }
+.text-2xl { font-size: $font-size-2xl; }
+.text-center { text-align: center; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+// ---- 弹性布局 ----
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.flex-1 { flex: 1; }
+.flex-shrink-0 { flex-shrink: 0; }
+.gap-xs { gap: $spacing-xs; }
+.gap-sm { gap: $spacing-sm; }
+.gap-md { gap: $spacing-md; }
+.gap-lg { gap: $spacing-lg; }
+
+// ---- 间距 ----
+.mt-0 { margin-top: 0; }
+.mt-sm { margin-top: $spacing-sm; }
+.mt-md { margin-top: $spacing-md; }
+.mt-lg { margin-top: $spacing-lg; }
+.mt-xl { margin-top: $spacing-xl; }
+.mb-sm { margin-bottom: $spacing-sm; }
+.mb-md { margin-bottom: $spacing-md; }
+.mb-lg { margin-bottom: $spacing-lg; }
+.ml-sm { margin-left: $spacing-sm; }
+.mr-sm { margin-right: $spacing-sm; }
+.p-md { padding: $spacing-md; }
+.p-lg { padding: $spacing-lg; }
+.px-md { padding-left: $spacing-md; padding-right: $spacing-md; }
+.py-sm { padding-top: $spacing-sm; padding-bottom: $spacing-sm; }
+.py-md { padding-top: $spacing-md; padding-bottom: $spacing-md; }
+
+// ---- 显示 ----
+.hidden { display: none; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+// ---- 溢出 ----
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ---- 鼠标 ----
+.cursor-pointer { cursor: pointer; }
+.select-none { user-select: none; }
+
+// ---- 圆角 ----
+.rounded-card { border-radius: $card-radius; }
+.rounded-control { border-radius: $control-radius; }

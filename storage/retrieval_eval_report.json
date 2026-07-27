@@ -1,0 +1,35 @@
+{
+  "total_cases": 18,
+  "in_scope_count": 12,
+  "out_of_scope_count": 6,
+  "hit_at_1": 0.8333,
+  "hit_at_3": 1.0,
+  "hit_at_4": 1.0,
+  "mrr": 0.9167,
+  "in_scope_distance_range": [
+    0.784,
+    1.0716
+  ],
+  "out_of_scope_distance_range": [
+    1.1671,
+    1.5016
+  ],
+  "in_scope_relevance_range": [
+    0.4258,
+    0.6927
+  ],
+  "out_of_scope_relevance_range": [
+    -0.1275,
+    0.3189
+  ],
+  "in_scope_rejected": 0,
+  "out_of_scope_accepted": 0,
+  "thresholds": {
+    "MAX_RAW_DISTANCE": 1.15,
+    "MIN_RELEVANCE_SCORE": 0.32,
+    "MIN_TOP1_TOP2_RELEVANCE_GAP": 0.0,
+    "MIN_VALID_CHUNKS": 1
+  },
+  "calibration_note": "基于 2026-07-13 的 12 题评测集校准的初始保守值。样本量有限，后续应扩大评测集重新校准。",
+  "failures": []
+}

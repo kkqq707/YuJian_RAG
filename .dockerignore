@@ -1,0 +1,87 @@
+# ============================================================
+# 企业智库 AI — Docker 构建忽略文件
+# 减小构建上下文，加快构建速度
+# 安全：防止敏感文件进入镜像
+# ============================================================
+
+# ---- 敏感文件（绝对不可进入镜像） ----
+.env
+.env.*
+*.env
+!*.env.example
+**/.env
+**/.env.*
+
+# ---- Git ----
+.git/
+.gitattributes
+.gitignore
+
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.tests_cache/
+*.egg
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Node.js ----
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# ---- IDE ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ---- 运行时数据（容器通过 volume 挂载） ----
+storage/
+data/
+backup/
+logs/
+models/
+
+# ---- 临时文件 ----
+*.tmp
+*.temp
+*.bak
+tmp/
+temp/
+*.orig
+
+# ---- 系统文件 ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Docker ----
+docker-compose.override.yml
+Dockerfile
+.dockerignore
+
+# ---- 文档和测试 ----
+*.md
+!README.md
+tests/
+test/
+*.test.*
+coverage/
+.coverage
+htmlcov/
+
+# ---- 密钥和证书 ----
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx

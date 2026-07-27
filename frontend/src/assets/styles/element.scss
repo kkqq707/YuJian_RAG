@@ -1,0 +1,150 @@
+// ============================================================
+// 企业智库 AI — Element Plus 主题覆盖
+// ============================================================
+
+@use 'sass:color';
+@use 'variables.scss' as *;
+
+// CSS Variables 覆盖
+:root {
+  // 品牌色
+  --el-color-primary: #{$color-primary};
+  --el-color-primary-light-3: #{color.adjust($color-primary, $lightness: 10%)};
+  --el-color-primary-light-5: #{color.adjust($color-primary, $lightness: 20%)};
+  --el-color-primary-light-7: #{color.adjust($color-primary, $lightness: 30%)};
+  --el-color-primary-light-8: #{color.adjust($color-primary, $lightness: 35%)};
+  --el-color-primary-light-9: #{$color-primary-light};
+  --el-color-primary-dark-2: #{$color-primary-hover};
+
+  // 成功/警告/危险
+  --el-color-success: #{$color-success};
+  --el-color-warning: #{$color-warning};
+  --el-color-danger: #{$color-danger};
+
+  // 文字
+  --el-text-color-primary: #{$color-text-primary};
+  --el-text-color-regular: #{$color-text-secondary};
+  --el-text-color-secondary: #{$color-text-tertiary};
+
+  // 边框
+  --el-border-color: #{$color-border};
+  --el-border-color-light: #{$color-border};
+  --el-border-color-lighter: #{$color-border};
+
+  // 背景
+  --el-bg-color: #{$color-card-bg};
+  --el-bg-color-page: #{$color-page-bg};
+
+  // 圆角
+  --el-border-radius-base: #{$control-radius};
+
+  // 字体
+  --el-font-family: #{$font-family};
+}
+
+// ---- 按钮 ----
+.el-button {
+  --el-button-size: 36px;
+  font-weight: 500;
+  border-radius: $control-radius;
+
+  &.el-button--small {
+    --el-button-size: 30px;
+    font-size: $font-size-sm;
+  }
+  &.el-button--large {
+    --el-button-size: 42px;
+    font-size: $font-size-lg;
+  }
+}
+
+// ---- 输入框 ----
+.el-input {
+  --el-input-border-radius: #{$control-radius};
+  .el-input__wrapper {
+    border-radius: $control-radius;
+    box-shadow: 0 0 0 1px $color-border inset;
+    &:hover {
+      box-shadow: 0 0 0 1px $color-text-tertiary inset;
+    }
+    &.is-focus {
+      box-shadow: 0 0 0 1px $color-primary inset;
+    }
+  }
+}
+
+// ---- 对话框 ----
+.el-dialog {
+  border-radius: 12px;
+  --el-dialog-border-radius: 12px;
+  .el-dialog__header {
+    padding: $spacing-lg $spacing-lg 0;
+  }
+  .el-dialog__body {
+    padding: $spacing-lg;
+  }
+  .el-dialog__footer {
+    padding: 0 $spacing-lg $spacing-lg;
+  }
+}
+
+// ---- 表格 ----
+.el-table {
+  --el-table-header-bg-color: #F8FAFC;
+  --el-table-header-text-color: #{$color-text-secondary};
+  --el-table-header-font-size: #{$font-size-sm};
+  --el-table-row-hover-bg-color: #F8FAFC;
+  --el-table-border-color: #{$color-border};
+
+  th.el-table__cell {
+    font-weight: 600;
+    height: 48px;
+  }
+  td.el-table__cell {
+    height: 52px;
+  }
+}
+
+// ---- 分页 ----
+.el-pagination {
+  --el-pagination-font-size: #{$font-size-sm};
+  .el-pager li {
+    border-radius: 6px;
+  }
+}
+
+// ---- 消息提示 ----
+.el-message {
+  border-radius: $control-radius;
+  box-shadow: $shadow-dropdown;
+}
+
+// ---- 通知 ----
+.el-notification {
+  border-radius: $card-radius;
+  box-shadow: $shadow-dropdown;
+}
+
+// ---- 菜单（侧栏用） ----
+.el-menu {
+  border-right: none;
+}
+
+// ---- 加载 ----
+.el-loading-mask {
+  &.is-fullscreen {
+    z-index: $z-modal;
+  }
+}
+
+// ---- 标签 ----
+.el-tag {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+// ---- 下拉菜单 ----
+.el-dropdown-menu {
+  border-radius: $control-radius;
+  box-shadow: $shadow-dropdown;
+}

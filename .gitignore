@@ -1,0 +1,113 @@
+# ============================================================
+# 企业智库 AI — 生产 .gitignore
+# ============================================================
+
+# --- 环境变量（含 API Key、密钥） ---
+.env
+.env.*
+!.env.example
+
+# --- Python 虚拟环境 ---
+.venv/
+venv/
+env/
+
+# --- Python 缓存 ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+
+# --- 测试缓存 ---
+.pytest_cache/
+.tests_cache/
+.tox/
+.coverage
+*.cover
+htmlcov/
+
+# --- Node.js ---
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# --- 向量数据库 (Chroma) ---
+chroma_db/
+storage/chroma_db/
+
+# --- 日志 ---
+*.log
+storage/logs/
+logs/
+
+# --- 临时数据库 ---
+*.db-journal
+*.db-wal
+*.db-shm
+
+# --- 上传文件（本地开发/测试） ---
+# 生产部署时上传文件由外部存储管理
+data/uploads/*_test*
+data/uploads/*audit_test*
+data/uploads/*upload_test*
+data/uploads/*doc_test*
+
+# --- 临时文件 ---
+*.tmp
+*.temp
+*.bak
+tmp/
+temp/
+
+# --- 系统文件 ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Docker ---
+docker-compose.override.yml
+
+# --- 数据库文件 ---
+*.db
+*.sqlite
+data/database/
+
+# --- 向量数据库 (本地数据) ---
+data/chroma/
+
+# --- 上传文件 (用户数据) ---
+data/uploads/
+
+# --- 模型文件 ---
+models/
+
+# --- 存储备份 ---
+storage/backup/
+
+# --- 数据备份目录 ---
+data_backup_*/
+_debug_backup_*/
+
+# --- Claude Code 编辑备份 ---
+*.claude_modified_backup
+*.current_modified
+
+# --- 备份文件 ---
+*.backup
+*.old

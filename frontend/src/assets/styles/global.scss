@@ -1,0 +1,62 @@
+// ============================================================
+// 企业智库 AI — 全局样式入口
+// ============================================================
+
+@use 'variables.scss' as *;
+@use 'reset.scss';
+@use 'element.scss';
+@use 'utilities.scss';
+
+// ---- 页面容器 ----
+.page-container {
+  padding: $page-padding;
+  max-width: $content-max-width;
+  margin: 0 auto;
+  width: 100%;
+}
+
+// ---- 卡片 ----
+.app-card {
+  background: $color-card-bg;
+  border-radius: $card-radius;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+}
+
+// ---- 页面标题 ----
+.page-title {
+  font-size: $font-size-xl;
+  font-weight: 600;
+  color: $color-text-primary;
+  margin-bottom: $spacing-lg;
+}
+
+// ---- 骨架屏 ----
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ---- 过渡 ----
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity $transition-normal;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+// ---- 响应式 ----
+@media (max-width: 768px) {
+  .page-container {
+    padding: $spacing-md;
+  }
+}
