@@ -2,8 +2,8 @@
   <!--
     GlassLoginCard — 右侧登录玻璃卡片
 
-    材质：玻璃拟态（rgba(255,255,255,0.12) + blur(30px)）
-    效果：边缘渐变光效、悬浮、进入动画
+    材质：玻璃拟态（rgba(35,55,125,0.32) + blur(18px)）
+    效果：多色边缘渐变光效、悬浮、进入动画
     包含：表单、输入框、登录按钮、健康状态指示器
     不修改任何登录逻辑，仅负责视觉呈现
   -->
@@ -11,7 +11,7 @@
     <!-- 顶部微光线 -->
     <div class="card__shine" />
 
-    <!-- 边缘渐变发光 -->
+    <!-- 边缘渐变发光（多色） -->
     <div class="card__edge-glow" />
 
     <!-- 卡片内容 -->
@@ -88,7 +88,7 @@
           </el-checkbox>
         </div>
 
-        <!-- 登录按钮：渐变 #3B82F6 → #A855F7 -->
+        <!-- 登录按钮：多色动态渐变 -->
         <button
           class="card__btn"
           :class="{ 'is-loading': loading, 'is-disabled': !canSubmit }"
@@ -225,24 +225,29 @@ defineExpose({ formRef, form })
 <style lang="scss" scoped>
 /* ============================================================
  * GlassLoginCard — 企业级玻璃登录卡片
+ * 材质：rgba(35,55,125,0.32) + blur(18px) saturate(130%)
  * 尺寸：max-width 450px
+ * 多色动态背景透过卡片可见
  * ============================================================ */
 
 .glass-login-card {
   position: relative;
   width: 100%;
   max-width: 450px;
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  /* 降低透明度，让多色渐变背景更明显穿透卡片 */
+  background: rgba(35, 55, 125, 0.32);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 24px;
   overflow: hidden;
+  /* 多层阴影含蓝紫青色调，反射背景多色 */
   box-shadow:
-    0 8px 48px rgba(0, 0, 0, 0.22),
-    0 0 80px rgba(80, 120, 220, 0.06),
-    0 0 120px rgba(138, 43, 226, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 8px 48px rgba(0, 0, 0, 0.25),
+    0 0 60px rgba(18, 104, 232, 0.08),
+    0 0 100px rgba(114, 52, 216, 0.06),
+    0 0 140px rgba(8, 168, 200, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   animation: card-enter 0.7s ease-out;
   transition:
     transform 0.35s ease,
@@ -251,10 +256,11 @@ defineExpose({ formRef, form })
   &:hover {
     transform: translateY(-3px);
     box-shadow:
-      0 12px 56px rgba(0, 0, 0, 0.28),
-      0 0 100px rgba(80, 120, 220, 0.1),
-      0 0 140px rgba(138, 43, 226, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      0 12px 56px rgba(0, 0, 0, 0.3),
+      0 0 80px rgba(18, 104, 232, 0.12),
+      0 0 120px rgba(114, 52, 216, 0.09),
+      0 0 160px rgba(8, 168, 200, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -269,7 +275,7 @@ defineExpose({ formRef, form })
   }
 }
 
-/* ---- 顶部微光线 ---- */
+/* ---- 顶部微光线（多色） ---- */
 .card__shine {
   position: absolute;
   top: 0;
@@ -279,9 +285,10 @@ defineExpose({ formRef, form })
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(180, 200, 240, 0.55),
-    rgba(160, 140, 230, 0.55),
-    rgba(0, 207, 255, 0.35),
+    rgba(18, 104, 232, 0.45),
+    rgba(114, 52, 216, 0.45),
+    rgba(179, 54, 217, 0.35),
+    rgba(8, 168, 200, 0.3),
     transparent
   );
   opacity: 0.75;
@@ -289,31 +296,53 @@ defineExpose({ formRef, form })
   z-index: 2;
 }
 
-/* ---- 边缘渐变发光 ---- */
+/* ---- 边缘渐变发光（多色旋转） ---- */
 .card__edge-glow {
   position: absolute;
   inset: -1px;
   border-radius: 24px;
   padding: 1px;
   background: linear-gradient(
-    135deg,
-    rgba(80, 140, 220, 0.3),
-    rgba(138, 43, 226, 0.2),
-    rgba(0, 207, 255, 0.15),
-    rgba(80, 140, 220, 0.25)
+    160deg,
+    rgba(18, 104, 232, 0.3),
+    rgba(58, 50, 163, 0.25),
+    rgba(114, 52, 216, 0.2),
+    rgba(179, 54, 217, 0.18),
+    rgba(8, 168, 200, 0.2),
+    rgba(24, 184, 160, 0.15),
+    rgba(18, 104, 232, 0.25)
   );
+  background-size: 300% 300%;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
   z-index: 1;
-  animation: edge-glow-shift 4s ease-in-out infinite;
+  animation: edge-glow-rotate 6s ease-in-out infinite;
 }
 
-@keyframes edge-glow-shift {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.8; }
+@keyframes edge-glow-rotate {
+  0% {
+    background-position: 0% 0%;
+    opacity: 0.4;
+  }
+  25% {
+    background-position: 50% 30%;
+    opacity: 0.7;
+  }
+  50% {
+    background-position: 100% 60%;
+    opacity: 0.55;
+  }
+  75% {
+    background-position: 50% 90%;
+    opacity: 0.75;
+  }
+  100% {
+    background-position: 0% 0%;
+    opacity: 0.4;
+  }
 }
 
 /* ---- 卡片内容区 ---- */
@@ -334,7 +363,7 @@ defineExpose({ formRef, form })
 
 .card__subheading {
   font-size: 14px;
-  color: rgba(200, 210, 230, 0.5);
+  color: rgba(200, 210, 230, 0.55);
   margin: 0 0 32px;
   letter-spacing: 0.5px;
   line-height: 1.6;
@@ -447,7 +476,7 @@ defineExpose({ formRef, form })
 
 .remember-check {
   :deep(.el-checkbox__label) {
-    color: rgba(200, 210, 230, 0.5);
+    color: rgba(200, 210, 230, 0.55);
     font-size: 13px;
   }
   :deep(.el-checkbox__inner) {
@@ -456,7 +485,12 @@ defineExpose({ formRef, form })
   }
 }
 
-/* ---- 登录按钮 — 渐变 #3B82F6 → #A855F7 ---- */
+/* ============================================================
+ * 登录按钮 — 固定紫色渐变（无动画、无颜色变化）
+ * 颜色：固定紫蓝渐变，始终不变
+ * hover：仅微移 + 阴影增强，不改变颜色
+ * 保留所有 loading / disabled / 点击逻辑
+ * ============================================================ */
 .card__btn {
   position: relative;
   width: 100%;
@@ -464,7 +498,14 @@ defineExpose({ formRef, form })
   font-size: 16px;
   font-weight: 600;
   color: #fff;
-  background: linear-gradient(135deg, #3B82F6 0%, #6366f1 40%, #A855F7 100%);
+  background: linear-gradient(
+    90deg,
+    #6638d9 0%,
+    #8a35df 50%,
+    #b33bd1 100%
+  );
+  background-size: 100% 100%;
+  background-position: center;
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -472,21 +513,21 @@ defineExpose({ formRef, form })
   overflow: hidden;
   isolation: isolate;
   transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    filter 0.25s ease;
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 
   &:hover:not(:disabled):not(.is-loading) {
-    transform: translateY(-2px);
-    filter: brightness(1.05);
+    transform: translateY(-1px);
+    filter: brightness(1.03);
     box-shadow:
-      0 8px 32px rgba(59, 130, 246, 0.35),
-      0 0 64px rgba(168, 85, 247, 0.18);
+      0 6px 24px rgba(102, 56, 217, 0.25),
+      0 0 40px rgba(138, 53, 223, 0.12);
   }
 
   &:active:not(:disabled):not(.is-loading) {
     transform: translateY(0) scale(0.98);
-    filter: brightness(0.97);
+    filter: brightness(0.98);
   }
 
   &.is-disabled {
@@ -620,6 +661,17 @@ defineExpose({ formRef, form })
 @keyframes glass-ripple-expand {
   0% { transform: scale(0); opacity: 1; }
   100% { transform: scale(4); opacity: 0; }
+}
+
+/* ============================================================
+ * 性能与无障碍 — 减少动态模式
+ * ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .card__edge-glow {
+    animation: none;
+    opacity: 0.4;
+  }
 }
 
 /* ============================================================

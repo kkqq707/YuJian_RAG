@@ -1,21 +1,23 @@
 <template>
   <!--
-    AiWaveBackground — 底部 AI 数据波浪效果
+    AiWaveBackground — 底部多色数据波浪效果
 
     多层 SVG 填充波浪叠加：
-    - 第一层：紫色（底层，最慢）
-    - 第二层：蓝色（中层）
-    - 第三层：青色（顶层，最快）
+    - 第一层：深蓝（底层，最慢，12s）
+    - 第二层：紫色（中层，10s）
+    - 第三层：品红（中上层，9s）
+    - 第四层：青蓝（中下层，8s）
+    - 第五层：青绿（顶层，最快，7s）
     - 点阵粒子数据流
     - 占页面底部 20%-25% 高度
-    - 8-15 秒循环动画
-    - 不遮挡内容
+    - 配合多色渐变背景，增强色彩层次
   -->
   <div class="ai-wave" aria-hidden="true">
     <!-- SVG 波浪层 -->
     <div class="ai-wave__layers">
+      <!-- Layer 1: 深蓝波浪 -->
       <svg
-        class="ai-wave__svg ai-wave__svg--purple"
+        class="ai-wave__svg ai-wave__svg--deepblue"
         viewBox="0 0 1440 200"
         preserveAspectRatio="none"
       >
@@ -25,8 +27,9 @@
         />
       </svg>
 
+      <!-- Layer 2: 紫色波浪 -->
       <svg
-        class="ai-wave__svg ai-wave__svg--blue"
+        class="ai-wave__svg ai-wave__svg--purple"
         viewBox="0 0 1440 200"
         preserveAspectRatio="none"
       >
@@ -36,6 +39,19 @@
         />
       </svg>
 
+      <!-- Layer 3: 品红波浪 -->
+      <svg
+        class="ai-wave__svg ai-wave__svg--magenta"
+        viewBox="0 0 1440 200"
+        preserveAspectRatio="none"
+      >
+        <path
+          class="ai-wave__path"
+          d="M0,130 C200,160 350,90 500,135 C650,180 800,110 960,145 C1120,180 1280,95 1440,125 L1440,200 L0,200 Z"
+        />
+      </svg>
+
+      <!-- Layer 4: 青蓝波浪 -->
       <svg
         class="ai-wave__svg ai-wave__svg--cyan"
         viewBox="0 0 1440 200"
@@ -44,6 +60,18 @@
         <path
           class="ai-wave__path"
           d="M0,155 C120,120 240,180 380,145 C520,110 660,165 800,135 C940,105 1080,150 1220,128 C1360,106 1400,140 1440,135 L1440,200 L0,200 Z"
+        />
+      </svg>
+
+      <!-- Layer 5: 青绿波浪 -->
+      <svg
+        class="ai-wave__svg ai-wave__svg--teal"
+        viewBox="0 0 1440 200"
+        preserveAspectRatio="none"
+      >
+        <path
+          class="ai-wave__path"
+          d="M0,160 C100,140 220,175 360,150 C500,125 640,168 780,140 C920,112 1060,155 1200,132 C1340,109 1400,145 1440,140 L1440,200 L0,200 Z"
         />
       </svg>
     </div>
@@ -70,7 +98,20 @@ interface DotParticle {
   vy: number
   life: number
   maxLife: number
+  // 颜色：淡蓝 / 淡紫 / 淡青
+  r: number
+  g: number
+  b: number
 }
+
+// 点阵颜色方案
+const DOT_COLORS = [
+  { r: 140, g: 200, b: 240 },  // 淡蓝
+  { r: 180, g: 170, b: 230 },  // 淡紫
+  { r: 120, g: 210, b: 220 },  // 淡青
+  { r: 200, g: 180, b: 225 },  // 淡紫蓝
+  { r: 150, g: 215, b: 230 },  // 淡水蓝
+]
 
 const dotsCanvasRef = ref<HTMLCanvasElement | null>(null)
 let dotsAnimId = 0
@@ -81,23 +122,28 @@ let reducedMotion = false
 
 function initDotParticles(): void {
   const count = reducedMotion ? 10 : 50
-  dotParticles = Array.from({ length: count }, () => ({
-    x: Math.random() * dotsWidth,
-    y: dotsHeight - Math.random() * dotsHeight * 0.6, // 集中在波浪区域
-    size: 0.5 + Math.random() * 1.5,
-    opacity: 0.1 + Math.random() * 0.25,
-    vx: (Math.random() - 0.5) * 0.3,
-    vy: -(0.1 + Math.random() * 0.3), // 向上浮动
-    life: 0,
-    maxLife: 150 + Math.random() * 250,
-  }))
+  dotParticles = Array.from({ length: count }, () => {
+    const color = DOT_COLORS[Math.floor(Math.random() * DOT_COLORS.length)]
+    return {
+      x: Math.random() * dotsWidth,
+      y: dotsHeight - Math.random() * dotsHeight * 0.6,
+      size: 0.5 + Math.random() * 1.5,
+      opacity: 0.1 + Math.random() * 0.25,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: -(0.1 + Math.random() * 0.3),
+      life: 0,
+      maxLife: 150 + Math.random() * 250,
+      r: color.r,
+      g: color.g,
+      b: color.b,
+    }
+  })
 }
 
 function drawDots(ctx: CanvasRenderingContext2D): void {
   ctx.clearRect(0, 0, dotsWidth, dotsHeight)
 
   for (const p of dotParticles) {
-    // 生命周期：淡入 → 保持 → 淡出
     let fadeMultiplier = 1
     const fadeIn = 30
     const fadeOut = 40
@@ -109,17 +155,17 @@ function drawDots(ctx: CanvasRenderingContext2D): void {
 
     const alpha = Math.max(0, p.opacity * fadeMultiplier)
 
-    // 绘制光点
+    // 绘制多色光点
     ctx.beginPath()
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-    ctx.fillStyle = `rgba(140,200,240,${alpha})`
+    ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`
     ctx.fill()
 
     // 微光晕
     if (p.size > 0.8) {
       ctx.beginPath()
       ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(80,180,230,${alpha * 0.06})`
+      ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha * 0.06})`
       ctx.fill()
     }
   }
@@ -132,7 +178,6 @@ function updateDots(): void {
     p.y += p.vy
     p.life++
 
-    // 生命周期结束 → 重置
     if (p.life >= p.maxLife) {
       p.x = Math.random() * dotsWidth
       p.y = dotsHeight - Math.random() * dotsHeight * 0.3
@@ -140,7 +185,6 @@ function updateDots(): void {
       p.maxLife = 150 + Math.random() * 250
     }
 
-    // 边界处理
     if (p.x < 0) p.x = dotsWidth
     if (p.x > dotsWidth) p.x = 0
     if (p.y < 0) {
@@ -184,7 +228,6 @@ function resizeDots(): void {
   }
 }
 
-// ---- 生命周期 ----
 onMounted(() => {
   const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
   reducedMotion = mq.matches
@@ -206,7 +249,9 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 /* ============================================================
- * AiWaveBackground — AI 数据流波浪
+ * AiWaveBackground — 多色 AI 数据流波浪
+ * 5 层 SVG 叠加：深蓝 → 紫 → 品红 → 青蓝 → 青绿
+ * 配合背景多色渐变，形成完整的多色交替效果
  * ============================================================ */
 
 .ai-wave {
@@ -216,7 +261,7 @@ onBeforeUnmount(() => {
   right: 0;
   z-index: 0;
   pointer-events: none;
-  height: 22vh;          /* 页面 22% 高度 */
+  height: 22vh;
   min-height: 160px;
   max-height: 280px;
   overflow: hidden;
@@ -243,17 +288,62 @@ onBeforeUnmount(() => {
   fill-opacity: 0.35;
 }
 
-/* ---- 第一层：紫色波浪（底层，最慢） ---- */
-.ai-wave__svg--purple {
+/* ---- Layer 1: 深蓝波浪（底层，最慢） ---- */
+.ai-wave__svg--deepblue {
   z-index: 1;
 
   .ai-wave__path {
-    fill: rgba(138, 43, 226, 0.28);
+    fill: rgba(16, 42, 114, 0.3);
   }
 
-  animation: wave-drift-1 12s ease-in-out infinite;
+  animation: wave-drift-1 13s ease-in-out infinite;
 }
 
+/* ---- Layer 2: 紫色波浪 ---- */
+.ai-wave__svg--purple {
+  z-index: 2;
+
+  .ai-wave__path {
+    fill: rgba(114, 52, 216, 0.28);
+  }
+
+  animation: wave-drift-2 11s ease-in-out infinite;
+}
+
+/* ---- Layer 3: 品红波浪 ---- */
+.ai-wave__svg--magenta {
+  z-index: 3;
+
+  .ai-wave__path {
+    fill: rgba(179, 54, 217, 0.22);
+  }
+
+  animation: wave-drift-3 9s ease-in-out infinite;
+}
+
+/* ---- Layer 4: 青蓝波浪 ---- */
+.ai-wave__svg--cyan {
+  z-index: 4;
+
+  .ai-wave__path {
+    fill: rgba(8, 168, 200, 0.24);
+  }
+
+  animation: wave-drift-4 8s ease-in-out infinite;
+}
+
+/* ---- Layer 5: 青绿波浪（顶层，最快） ---- */
+.ai-wave__svg--teal {
+  z-index: 5;
+
+  .ai-wave__path {
+    fill: rgba(24, 184, 160, 0.18);
+  }
+
+  animation: wave-drift-5 7s ease-in-out infinite;
+}
+
+/* ---- 波浪动画关键帧 ---- */
 @keyframes wave-drift-1 {
   0%, 100% {
     transform: translateX(0) translateY(0) scaleX(1);
@@ -269,46 +359,45 @@ onBeforeUnmount(() => {
   }
 }
 
-/* ---- 第二层：蓝色波浪（中层） ---- */
-.ai-wave__svg--blue {
-  z-index: 2;
-
-  .ai-wave__path {
-    fill: rgba(40, 53, 147, 0.32);
-  }
-
-  animation: wave-drift-2 10s ease-in-out infinite;
-}
-
 @keyframes wave-drift-2 {
   0%, 100% {
     transform: translateX(0) translateY(0) scaleX(1);
   }
   33% {
-    transform: translateX(12px) translateY(-5px) scaleX(1.02);
+    transform: translateX(14px) translateY(-5px) scaleX(1.02);
   }
   66% {
-    transform: translateX(-10px) translateY(-7px) scaleX(0.97);
+    transform: translateX(-12px) translateY(-7px) scaleX(0.97);
   }
-}
-
-/* ---- 第三层：青色波浪（顶层，最快） ---- */
-.ai-wave__svg--cyan {
-  z-index: 3;
-
-  .ai-wave__path {
-    fill: rgba(0, 207, 255, 0.22);
-  }
-
-  animation: wave-drift-3 8s ease-in-out infinite;
 }
 
 @keyframes wave-drift-3 {
   0%, 100% {
     transform: translateX(0) translateY(0) scaleX(1);
   }
+  30% {
+    transform: translateX(-10px) translateY(-4px) scaleX(1.015);
+  }
+  60% {
+    transform: translateX(8px) translateY(-6px) scaleX(0.985);
+  }
+}
+
+@keyframes wave-drift-4 {
+  0%, 100% {
+    transform: translateX(0) translateY(0) scaleX(1);
+  }
   50% {
-    transform: translateX(-8px) translateY(-4px) scaleX(1.01);
+    transform: translateX(-8px) translateY(-3px) scaleX(1.01);
+  }
+}
+
+@keyframes wave-drift-5 {
+  0%, 100% {
+    transform: translateX(0) translateY(0) scaleX(1);
+  }
+  50% {
+    transform: translateX(6px) translateY(-5px) scaleX(1.008);
   }
 }
 
@@ -318,7 +407,7 @@ onBeforeUnmount(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 4;
+  z-index: 6;
 }
 
 /* ============================================================
