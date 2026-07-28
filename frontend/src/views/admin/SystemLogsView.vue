@@ -149,7 +149,7 @@
       v-model="drawerVisible"
       title="日志详情"
       direction="rtl"
-      size="480px"
+      :size="logDrawerSize"
     >
       <template v-if="selectedLog">
         <el-descriptions :column="1" border>
@@ -196,7 +196,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, inject } from 'vue'
+import type { Ref } from 'vue'
 import adminSystemApi from '@/api/adminSystem'
 import type { SystemLogItem, SystemLogDetail, ModuleItem } from '@/types/api'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -206,6 +207,10 @@ import LoadingBlock from '@/components/common/LoadingBlock.vue'
 import { Search, RefreshCw } from '@lucide/vue'
 import { extractErrorMessage } from '@/utils/error'
 import dayjs from 'dayjs'
+
+// ---- 响应式 ----
+const isMobile = inject<Ref<boolean>>('isMobile', ref(false))
+const logDrawerSize = computed(() => isMobile.value ? 'calc(100vw - 24px)' : '480px')
 
 const loading = ref(true)
 const error = ref('')
@@ -354,7 +359,9 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .system-logs-page {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .filter-card {
@@ -373,6 +380,11 @@ onMounted(() => {
   padding: $spacing-xl 0;
 }
 
+// 表格横向滚动容器
+:deep(.app-card > .el-table) {
+  max-width: 100%;
+}
+
 .pagination-wrap {
   display: flex;
   justify-content: flex-end;
@@ -389,5 +401,39 @@ onMounted(() => {
 .detail-text {
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+// ---- 移动端适配 ----
+@media (max-width: 767px) {
+  .filter-form {
+    :deep(.el-form-item) {
+      display: block;
+      margin-bottom: $spacing-sm;
+      width: 100%;
+
+      .el-form-item__content {
+        width: 100%;
+
+        .el-select,
+        .el-input,
+        .el-date-editor {
+          width: 100% !important;
+        }
+      }
+    }
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+
+    :deep(.el-pagination) {
+      .el-pagination__sizes,
+      .el-pagination__total {
+        display: none;
+      }
+    }
+  }
 }
 </style>

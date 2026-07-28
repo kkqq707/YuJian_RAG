@@ -14,6 +14,8 @@ import EmptyState from '@/components/common/EmptyState.vue'
 
 <style lang="scss" scoped>
 .audit-logs-page {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 </style>

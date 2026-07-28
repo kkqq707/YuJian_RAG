@@ -201,6 +201,7 @@ async function handleChangePassword() {
   font-size: $font-size-sm;
   color: $color-text-secondary;
   margin-bottom: $spacing-lg;
+  word-break: break-word;
 }
 
 // ---- 基本信息卡片 ----
@@ -219,6 +220,7 @@ async function handleChangePassword() {
   display: flex;
   flex-direction: column;
   gap: $spacing-md;
+  min-width: 0;
 }
 
 .detail-row {
@@ -256,5 +258,27 @@ async function handleChangePassword() {
 // ---- 账户安全卡片 ----
 .password-form {
   max-width: 420px;
+}
+
+// ---- 移动端适配 ----
+@media (max-width: 767px) {
+  .profile-info {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: $spacing-md;
+  }
+
+  .detail-row {
+    justify-content: center;
+  }
+
+  .password-form {
+    max-width: 100%;
+  }
+
+  .card-title {
+    font-size: $font-size-base;
+  }
 }
 </style>

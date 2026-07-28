@@ -10,8 +10,8 @@
     <p class="confirm-body">{{ message }}</p>
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="handleCancel">{{ cancelText }}</el-button>
-        <el-button :type="confirmType" :loading="loading" @click="handleConfirm">
+        <el-button @click="handleCancel" class="touch-target">{{ cancelText }}</el-button>
+        <el-button :type="confirmType" :loading="loading" @click="handleConfirm" class="touch-target">
           {{ confirmText }}
         </el-button>
       </div>
@@ -78,11 +78,21 @@ defineExpose({ setLoading: (val: boolean) => { loading.value = val } })
   font-size: $font-size-base;
   color: $color-text-secondary;
   line-height: 1.6;
+  word-break: break-word;
 }
 
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
   gap: $spacing-sm;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+
+    .el-button {
+      width: 100%;
+      margin-left: 0 !important;
+    }
+  }
 }
 </style>

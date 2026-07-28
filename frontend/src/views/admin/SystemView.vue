@@ -278,7 +278,9 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .system-page {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .section {
@@ -306,7 +308,7 @@ onMounted(() => {
 // 健康卡片
 .health-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: $spacing-md;
 }
 
@@ -345,18 +347,22 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .health-name {
   font-size: $font-size-sm;
   font-weight: 500;
   color: $color-text-primary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 // 状态卡片
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: $spacing-md;
 }
 
@@ -365,6 +371,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 4px 0;
+  gap: $spacing-sm;
 }
 
 .status-label {
@@ -384,29 +391,51 @@ onMounted(() => {
   margin-top: 4px;
   padding-top: 8px;
   border-top: 1px solid $color-border;
+  word-break: break-word;
 }
 
-@media (max-width: 1400px) {
-  .health-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
+// ---- 统一响应式断点 ----
 
-@media (max-width: 1200px) {
+// Tablet (768px ~ 1199px)
+@media (min-width: 768px) and (max-width: 1199px) {
   .health-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
   .status-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  :deep(.el-descriptions) {
+    --el-descriptions-item-bordered-label-background: transparent;
   }
 }
 
-@media (max-width: 768px) {
+// Mobile (< 768px)
+@media (max-width: 767px) {
   .health-grid {
     grid-template-columns: 1fr;
+    gap: $spacing-sm;
   }
+
   .status-grid {
     grid-template-columns: 1fr;
+    gap: $spacing-sm;
+  }
+
+  .health-card {
+    padding: $spacing-md;
+  }
+
+  :deep(.el-descriptions__body .el-descriptions__table) {
+    tr {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .el-descriptions__cell {
+      padding: $spacing-xs $spacing-sm;
+    }
   }
 }
 </style>

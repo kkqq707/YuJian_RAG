@@ -2,7 +2,7 @@
   <el-dialog
     v-model="visible"
     title="上传知识文件"
-    width="640px"
+    :width="dialogWidth"
     :close-on-click-modal="false"
     @closed="handleClosed"
   >
@@ -98,7 +98,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, inject } from 'vue'
+import type { Ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadInstance, UploadFile, UploadRawFile } from 'element-plus'
 import { UploadFilled, CircleCheckFilled, Loading, Clock } from '@element-plus/icons-vue'
@@ -121,6 +122,11 @@ const maxFileCount = 10
 const knowledgeStore = useKnowledgeStore()
 
 const visible = ref(props.modelValue)
+
+// ---- 响应式宽度 ----
+const isMobile = inject<Ref<boolean>>('isMobile', ref(false))
+const dialogWidth = computed(() => isMobile.value ? 'calc(100vw - 24px)' : '640px')
+
 const uploadRef = ref<UploadInstance>()
 const fileList = ref<UploadFile[]>([])
 const uploading = ref(false)
@@ -368,6 +374,16 @@ function handleClosed(): void {
   display: flex;
   justify-content: flex-end;
   gap: $spacing-sm;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+
+    .el-button {
+      width: 100%;
+      margin-left: 0 !important;
+      min-height: var(--touch-target-min);
+    }
+  }
 }
 
 .progress-stages {

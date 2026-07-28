@@ -255,8 +255,14 @@ function handlePageChange(page: number): void {
 
 <style lang="scss" scoped>
 .file-table-wrapper {
+  // 横向滚动容器
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
   .el-table {
     border-radius: $card-radius;
+    min-width: 700px; // 保证小屏幕下表格可横向滚动
   }
 }
 
@@ -282,11 +288,25 @@ function handlePageChange(page: number): void {
   display: flex;
   gap: 4px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .table-pagination {
   display: flex;
   justify-content: flex-end;
   margin-top: $spacing-md;
+}
+
+// ---- 移动端适配 ----
+@media (max-width: 767px) {
+  .table-pagination {
+    justify-content: center;
+
+    :deep(.el-pagination) {
+      .el-pagination__total {
+        display: none;
+      }
+    }
+  }
 }
 </style>

@@ -320,17 +320,20 @@ function handleSortChange(_sort: { prop: string; order: string }): void {
 
 <style lang="scss" scoped>
 .knowledge-page {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .header-actions {
   display: flex;
   gap: $spacing-sm;
+  flex-wrap: wrap;
 }
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: $spacing-md;
   margin-bottom: $spacing-lg;
 }
@@ -345,6 +348,7 @@ function handleSortChange(_sort: { prop: string; order: string }): void {
   border-radius: $card-radius;
   font-size: $font-size-sm;
   color: $color-text-secondary;
+  flex-wrap: wrap;
 
   .el-icon {
     color: $color-text-tertiary;
@@ -376,30 +380,46 @@ function handleSortChange(_sort: { prop: string; order: string }): void {
   padding: $spacing-lg 0;
 }
 
-@media (max-width: 1600px) {
+// ---- 统一响应式断点 ----
+
+// Desktop large → 4 columns stats
+@media (min-width: 1200px) and (max-width: 1599px) {
   .stat-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 1366px) {
+// Tablet (768px ~ 1199px)
+@media (min-width: 768px) and (max-width: 1199px) {
   .stat-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 768px) {
+// Mobile (< 768px)
+@media (max-width: 767px) {
   .stat-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: $spacing-sm;
   }
 
   .filter-row {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .filter-input,
   .filter-select {
     width: 100%;
+  }
+
+  .header-actions {
+    width: 100%;
+
+    .el-button {
+      flex: 1;
+      min-height: var(--touch-target-min);
+    }
   }
 }
 </style>

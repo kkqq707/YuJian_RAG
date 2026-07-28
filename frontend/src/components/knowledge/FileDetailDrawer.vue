@@ -2,7 +2,7 @@
   <el-drawer
     v-model="visible"
     title="文件详情"
-    size="480px"
+    :size="drawerSize"
     :close-on-click-modal="true"
     @closed="handleClosed"
   >
@@ -96,12 +96,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { View } from '@element-plus/icons-vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import LoadingBlock from '@/components/common/LoadingBlock.vue'
 import type { KnowledgeFileItem } from '@/types/api'
+import type { Ref } from 'vue'
 
 const router = useRouter()
 
@@ -115,6 +116,10 @@ const emit = defineEmits<{
 }>()
 
 const visible = ref(props.modelValue)
+
+// ---- 响应式宽度 ----
+const isMobile = inject<Ref<boolean>>('isMobile', ref(false))
+const drawerSize = computed(() => isMobile.value ? 'calc(100vw - 24px)' : '480px')
 
 watch(() => props.modelValue, (val) => {
   visible.value = val

@@ -299,7 +299,9 @@ async function handleCopy(): Promise<void> {
 
 <style lang="scss" scoped>
 .chat-preview-page {
+  width: 100%;
   max-width: 1060px;
+  margin: 0 auto;
 }
 
 .preview-layout {
@@ -322,17 +324,46 @@ async function handleCopy(): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
 }
 
 .input-options {
   display: flex;
   align-items: center;
   gap: $spacing-md;
+  flex-wrap: wrap;
 }
 
 .input-hint {
   font-size: $font-size-xs;
   color: $color-text-tertiary;
+}
+
+// ---- 移动端适配 ----
+@media (max-width: 767px) {
+  .input-card {
+    padding: $spacing-md;
+  }
+
+  .input-footer {
+    flex-direction: column;
+    align-items: stretch;
+
+    .el-button {
+      align-self: flex-end;
+      min-height: var(--touch-target-min);
+    }
+  }
+
+  .input-options {
+    font-size: $font-size-xs;
+  }
+
+  .response-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 .response-area {

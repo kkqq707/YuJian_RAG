@@ -1,44 +1,94 @@
 <template>
   <div class="admin-layout">
-    <!-- 侧栏 -->
-    <aside :class="['admin-sidebar', { collapsed: appStore.sidebarCollapsed }]">
-      <div class="sidebar-header">
+    <!-- 移动端/平板 Drawer 遮罩 -->
+    <transition name="fade">
+      <div
+        v-if="(isMobile || isTablet) && appStore.mobileSidebarOpen"
+        class="admin-layout__overlay"
+        aria-hidden="true"
+        @click="closeDrawer"
+      />
+    </transition>
+
+    <!-- 侧栏：desktop 固定 | tablet/mobile Drawer -->
+    <aside
+      ref="sidebarRef"
+      :class="[
+        'admin-sidebar',
+        {
+          'admin-sidebar--collapsed': isDesktop && appStore.sidebarCollapsed,
+          'admin-sidebar--drawer-open': (isMobile || isTablet) && appStore.mobileSidebarOpen,
+          'admin-sidebar--drawer-closed': (isMobile || isTablet) && !appStore.mobileSidebarOpen,
+        },
+      ]"
+      :aria-label="(isMobile || isTablet) ? '管理导航抽屉' : '管理侧栏'"
+      :role="(isMobile || isTablet) ? 'dialog' : 'complementary'"
+      :aria-modal="(isMobile || isTablet) ? 'true' : undefined"
+    >
+      <!-- 侧栏头部 -->
+      <div
+        class="sidebar-header"
+        :style="{ paddingTop: isMobile ? 'var(--safe-area-top)' : undefined }"
+      >
         <div class="sidebar-logo">
           <div class="logo-icon">
             <BookOpen :size="24" />
           </div>
-          <span v-show="!appStore.sidebarCollapsed" class="logo-text">企业智库 AI</span>
+          <span
+            v-show="!appStore.sidebarCollapsed || isMobile || isTablet"
+            class="logo-text"
+          >企业智库 AI</span>
         </div>
+        <!-- 平板/移动端：关闭 Drawer 按钮 -->
+        <el-button
+          v-if="isMobile || isTablet"
+          text
+          aria-label="关闭管理导航"
+          class="drawer-close-btn touch-target"
+          @click="closeDrawer"
+        >
+          <X :size="20" />
+        </el-button>
       </div>
 
-      <el-menu
-        :default-active="activeMenu"
-        :collapse="appStore.sidebarCollapsed"
-        background-color="#0F172A"
-        text-color="#94A3B8"
-        active-text-color="#FFFFFF"
-        class="sidebar-menu"
-        router
-      >
-        <el-menu-item
-          v-for="item in permissionStore.adminMenuItems"
-          :key="item.path"
-          :index="item.path"
-          @mouseenter="onMenuHover(item.path)"
+      <!-- 导航菜单 -->
+      <nav class="sidebar-menu" aria-label="管理导航">
+        <el-menu
+          :default-active="activeMenu"
+          :collapse="isDesktop ? appStore.sidebarCollapsed : false"
+          background-color="#0F172A"
+          text-color="#94A3B8"
+          active-text-color="#FFFFFF"
+          router
+          @select="onMenuSelect"
         >
-          <el-icon><component :is="item.icon" /></el-icon>
-          <template #title>{{ item.title }}</template>
-        </el-menu-item>
-      </el-menu>
+          <el-menu-item
+            v-for="item in permissionStore.adminMenuItems"
+            :key="item.path"
+            :index="item.path"
+            @mouseenter="onMenuHover(item.path)"
+          >
+            <el-icon><component :is="item.icon" /></el-icon>
+            <template #title>{{ item.title }}</template>
+          </el-menu-item>
+        </el-menu>
+      </nav>
 
-      <div class="sidebar-footer">
+      <!-- 侧栏底部：管理员信息 -->
+      <div
+        class="sidebar-footer"
+        :style="{ paddingBottom: isMobile ? 'var(--safe-area-bottom)' : undefined }"
+      >
         <div class="sidebar-user">
           <el-avatar :size="32" icon="UserFilled" />
-          <span v-show="!appStore.sidebarCollapsed" class="user-name">
+          <span
+            v-show="!appStore.sidebarCollapsed || isMobile || isTablet"
+            class="user-name"
+          >
             {{ authStore.displayName }}
           </span>
           <el-tag
-            v-show="!appStore.sidebarCollapsed"
+            v-show="!appStore.sidebarCollapsed || isMobile || isTablet"
             size="small"
             type="primary"
             class="role-tag"
@@ -50,27 +100,60 @@
     </aside>
 
     <!-- 主区域 -->
-    <div :class="['admin-main', { 'main-collapsed': appStore.sidebarCollapsed }]">
+    <div
+      :class="[
+        'admin-main',
+        { 'admin-main--collapsed': isDesktop && appStore.sidebarCollapsed },
+      ]"
+    >
       <!-- 顶部栏 -->
-      <header class="admin-header">
+      <header
+        class="admin-header"
+        :style="{ paddingTop: isMobile ? 'var(--safe-area-top)' : undefined }"
+      >
         <div class="header-left">
+          <!-- 移动端/平板：菜单按钮 -->
           <el-button
+            v-if="isMobile || isTablet"
+            class="menu-btn touch-target"
+            aria-label="打开管理导航"
+            @click="openDrawer"
+          >
+            <Menu :size="20" />
+          </el-button>
+          <!-- 桌面端：折叠按钮 -->
+          <el-button
+            v-else
             class="collapse-btn"
             :icon="appStore.sidebarCollapsed ? 'Expand' : 'Fold'"
             text
+            :aria-label="appStore.sidebarCollapsed ? '展开侧栏' : '折叠侧栏'"
             @click="appStore.toggleSidebar()"
           />
-          <AppBreadcrumb />
+          <!-- 当前页面标题（移动端省略） -->
+          <span class="header-page-title">{{ currentPageTitle }}</span>
+          <AppBreadcrumb v-if="isDesktop" />
         </div>
 
         <div class="header-right">
           <div class="header-actions">
-            <span class="status-dot" :class="appStore.backendOnline ? 'online' : 'offline'" />
-            <span class="status-text">
+            <!-- 系统状态：桌面显示文字+点，移动端仅显示点 -->
+            <el-tooltip
+              :content="appStore.backendOnline ? '系统正常' : '连接断开'"
+              placement="bottom"
+            >
+              <span
+                class="status-dot"
+                :class="appStore.backendOnline ? 'online' : 'offline'"
+                role="status"
+                :aria-label="appStore.backendOnline ? '系统正常' : '连接断开'"
+              />
+            </el-tooltip>
+            <span v-if="isDesktop" class="status-text">
               {{ appStore.backendOnline ? '系统正常' : '连接断开' }}
             </span>
-            <el-tooltip content="使用帮助" placement="bottom">
-              <el-button circle text>
+            <el-tooltip v-if="isDesktop" content="使用帮助" placement="bottom">
+              <el-button circle text aria-label="使用帮助">
                 <el-icon><QuestionFilled /></el-icon>
               </el-button>
             </el-tooltip>
@@ -92,23 +175,103 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, watch, onMounted, onUnmounted, provide } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { usePermissionStore } from '@/stores/permission'
+import { useResponsive } from '@/composables/useResponsive'
 import AppBreadcrumb from '@/components/layout/AppBreadcrumb.vue'
 import UserDropdown from '@/components/layout/UserDropdown.vue'
-import { BookOpen } from '@lucide/vue'
+import { BookOpen, X, Menu } from '@lucide/vue'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 const permissionStore = usePermissionStore()
 
+// ---- 统一响应式 ----
+const { isMobile, isTablet, isDesktop } = useResponsive()
+
+// ---- 暴露给子组件 ----
+provide('isMobile', isMobile)
+provide('isTablet', isTablet)
+provide('isDesktop', isDesktop)
+
+// ---- 当前页面标题 ----
+const currentPageTitle = computed(() => {
+  const metaTitle = route.meta.title
+  if (metaTitle) return metaTitle as string
+  // Fallback: 从 menu items 中查找
+  const menuItem = permissionStore.adminMenuItems.find(
+    (item) => item.path === route.path,
+  )
+  return menuItem?.title || ''
+})
+
+// ---- 当前激活菜单 ----
 const activeMenu = computed(() => route.path)
 
-// ---- 菜单悬停预加载 —— 鼠标移入菜单项时提前加载页面组件 ----
+// ---- Drawer 引用 ----
+const sidebarRef = ref<HTMLElement>()
+
+// ---- Drawer 操作 ----
+function openDrawer() {
+  appStore.setMobileSidebarOpen(true)
+}
+
+function closeDrawer() {
+  appStore.setMobileSidebarOpen(false)
+}
+
+// ---- 菜单选中后关闭 Drawer ----
+function onMenuSelect() {
+  if (isMobile.value || isTablet.value) {
+    closeDrawer()
+  }
+}
+
+// ---- 键盘 Escape 关闭 Drawer ----
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && appStore.mobileSidebarOpen) {
+    closeDrawer()
+  }
+}
+
+// ---- 路由变化后关闭 Drawer ----
+watch(
+  () => router.currentRoute.value.path,
+  () => {
+    if (appStore.mobileSidebarOpen) {
+      closeDrawer()
+    }
+  },
+)
+
+// ---- Drawer 焦点管理 ----
+watch(
+  () => appStore.mobileSidebarOpen,
+  (open) => {
+    if (open) {
+      setTimeout(() => {
+        const el = sidebarRef.value?.querySelector<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        )
+        el?.focus()
+      }, 300) // 等待 transition
+    }
+  },
+)
+
+// ---- 从 tablet/mobile 切换到 desktop 时关闭 Drawer ----
+watch([isMobile, isTablet], ([mob, tab]) => {
+  if (!mob && !tab) {
+    appStore.setMobileSidebarOpen(false)
+  }
+})
+
+// ---- 菜单悬停预加载 ----
 const routePreloadMap: Record<string, () => Promise<unknown>> = {
   '/admin/dashboard': () => import('@/views/admin/DashboardView.vue'),
   '/admin/knowledge': () => import('@/views/admin/KnowledgeView.vue'),
@@ -125,40 +288,104 @@ const routePreloadMap: Record<string, () => Promise<unknown>> = {
 function onMenuHover(path: string) {
   routePreloadMap[path]?.()
 }
+
+// ---- 生命周期 ----
+onMounted(() => {
+  document.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <style lang="scss" scoped>
+// ---- 根布局 ----
 .admin-layout {
-  height: 100vh;
+  display: flex;
+  height: var(--app-height);
+  min-height: 0;
   overflow: hidden;
   background: $color-page-bg;
 }
 
-// ---- 侧栏 (固定定位) ----
-.admin-sidebar {
+// ---- 遮罩 ----
+.admin-layout__overlay {
   position: fixed;
-  left: 0;
-  top: 0;
-  height: 100vh;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 90;
+}
+
+// ---- 侧栏基础 ----
+.admin-sidebar {
   width: $sidebar-width;
+  flex: 0 0 $sidebar-width;
   background: $color-sidebar-bg;
   display: flex;
   flex-direction: column;
   transition: width $transition-normal;
-  flex-shrink: 0;
+  position: relative;
   z-index: $z-sidebar;
 
-  &.collapsed {
+  // 桌面端折叠
+  &--collapsed {
     width: $sidebar-collapse-width;
+    flex: 0 0 $sidebar-collapse-width;
+  }
+
+  // 平板端：Drawer 模式
+  @media (min-width: 768px) and (max-width: 1199px) {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(86vw, 320px);
+    flex: none;
+    transform: translateX(-100%);
+    transition: transform $transition-normal;
+    box-shadow: $shadow-dropdown;
+
+    &--drawer-open {
+      transform: translateX(0);
+    }
+
+    &--drawer-closed {
+      transform: translateX(-100%);
+    }
+  }
+
+  // 移动端：Drawer 模式
+  @media (max-width: 767px) {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(86vw, 320px);
+    flex: none;
+    transform: translateX(-100%);
+    transition: transform $transition-normal;
+    box-shadow: $shadow-dropdown;
+
+    &--drawer-open {
+      transform: translateX(0);
+    }
+
+    &--drawer-closed {
+      transform: translateX(-100%);
+    }
   }
 }
 
+// ---- 侧栏头部 ----
 .sidebar-header {
   height: $header-height;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 $spacing-md;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .sidebar-logo {
@@ -183,14 +410,33 @@ function onMenuHover(path: string) {
   white-space: nowrap;
 }
 
+.drawer-close-btn {
+  color: #94a3b8;
+  padding: 4px !important;
+  min-height: auto !important;
+
+  &:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+// ---- 导航菜单 ----
 .sidebar-menu {
   flex: 1;
-  border-right: none;
-  padding-top: $spacing-sm;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
 
-  .el-menu-item {
+  .el-menu {
+    border-right: none;
+  }
+
+  :deep(.el-menu) {
+    padding-top: $spacing-sm;
+  }
+
+  :deep(.el-menu-item) {
     margin: 2px $spacing-sm;
     border-radius: $control-radius;
     height: 44px;
@@ -206,9 +452,11 @@ function onMenuHover(path: string) {
   }
 }
 
+// ---- 侧栏底部 ----
 .sidebar-footer {
   padding: $spacing-md;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .sidebar-user {
@@ -224,30 +472,34 @@ function onMenuHover(path: string) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .role-tag {
   flex-shrink: 0;
 }
 
-// ---- 主区域 (独立滚动) ----
+// ---- 主区域 ----
 .admin-main {
-  margin-left: $sidebar-width;
-  height: 100vh;
-  overflow: hidden;
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   transition: margin-left $transition-normal;
 
-  &.main-collapsed {
-    margin-left: $sidebar-collapse-width;
+  // 桌面端折叠时减少左边距（现在使用 flex，无需 margin）
+  &--collapsed {
+    // flex 布局下无需额外处理
   }
 }
 
 // ---- 顶部栏 ----
 .admin-header {
   height: $header-height;
+  min-height: $header-height;
   background: $color-card-bg;
   border-bottom: 1px solid $color-border;
   display: flex;
@@ -256,6 +508,18 @@ function onMenuHover(path: string) {
   padding: 0 $spacing-lg;
   flex-shrink: 0;
   z-index: $z-header;
+
+  // 移动端缩小 header
+  @media (max-width: 767px) {
+    height: var(--header-height-mobile);
+    min-height: var(--header-height-mobile);
+    padding: 0 var(--page-padding-mobile);
+  }
+
+  // 平板端
+  @media (min-width: 768px) and (max-width: 1199px) {
+    padding: 0 var(--page-padding-tablet);
+  }
 }
 
 .header-left,
@@ -263,16 +527,58 @@ function onMenuHover(path: string) {
   display: flex;
   align-items: center;
   gap: $spacing-md;
+  min-width: 0;
 }
 
+.header-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.header-right {
+  flex-shrink: 0;
+}
+
+// ---- 当前页面标题 ----
+.header-page-title {
+  font-size: $font-size-base;
+  font-weight: 600;
+  color: $color-text-primary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  // 桌面端：隐藏（breadcrumb 已显示）
+  @media (min-width: 1200px) {
+    display: none;
+  }
+}
+
+// ---- 菜单按钮（移动端/平板） ----
+.menu-btn {
+  padding: 8px !important;
+  min-height: auto !important;
+  color: $color-text-secondary;
+  flex-shrink: 0;
+
+  &:hover {
+    color: $color-text-primary;
+    background: #f1f5f9;
+  }
+}
+
+// ---- 折叠按钮（桌面端） ----
 .collapse-btn {
   font-size: 18px;
   color: $color-text-secondary;
+  flex-shrink: 0;
+
   &:hover {
     color: $color-text-primary;
   }
 }
 
+// ---- 状态指示 ----
 .header-actions {
   display: flex;
   align-items: center;
@@ -283,19 +589,58 @@ function onMenuHover(path: string) {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  &.online { background: $color-success; }
-  &.offline { background: $color-danger; }
+  flex-shrink: 0;
+
+  &.online {
+    background: $color-success;
+  }
+
+  &.offline {
+    background: $color-danger;
+  }
 }
 
 .status-text {
   font-size: $font-size-xs;
   color: $color-text-tertiary;
+  white-space: nowrap;
+
+  @media (max-width: 767px) {
+    display: none;
+  }
 }
 
 // ---- 内容区 ----
 .admin-content {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: $page-padding;
+
+  // 移动端缩小内边距
+  @media (max-width: 767px) {
+    padding: var(--page-padding-mobile);
+    padding-bottom: calc(var(--page-padding-mobile) + var(--safe-area-bottom));
+  }
+
+  // 平板端
+  @media (min-width: 768px) and (max-width: 1199px) {
+    padding: var(--page-padding-tablet);
+  }
+}
+
+// ---- prefers-reduced-motion ----
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar {
+    transition: none;
+  }
+
+  .admin-main {
+    transition: none;
+  }
 }
 </style>

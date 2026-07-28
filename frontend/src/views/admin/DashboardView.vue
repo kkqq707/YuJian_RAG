@@ -97,13 +97,13 @@
     <div class="health-section">
       <div class="section-header">
         <h3 class="section-title">系统健康</h3>
-        <el-button text size="small" @click="fetchHealth" :loading="healthLoading">
+        <el-button text size="small" @click="fetchHealth" :loading="healthLoading" class="touch-target">
           <el-icon><Refresh /></el-icon>
         </el-button>
       </div>
       <div class="health-grid">
         <div class="health-item" v-for="item in healthItems" :key="item.label">
-          <span :class="['health-dot', item.ok ? 'ok' : 'error']" />
+          <span :class="['health-dot', item.ok ? 'ok' : 'error']" :aria-label="item.ok ? '正常' : '异常'" />
           <span class="health-label">{{ item.label }}</span>
           <span v-if="item.detail" class="health-detail">{{ item.detail }}</span>
           <StatusBadge :status="item.ok ? 'ok' : 'error'" />
@@ -157,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import adminSystemApi from '@/api/adminSystem'
 import type { AdminSystemStatusResponse } from '@/types/api'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -166,8 +166,7 @@ import QuickEntryCard from '@/components/dashboard/QuickEntryCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import LoadingBlock from '@/components/common/LoadingBlock.vue'
-import { Files, FileCheck, Layers, Database, Users, Upload, UserPlus, MessageSquare, Monitor, Cpu } from '@lucide/vue'
-import { computed } from 'vue'
+import { Files, FileCheck, Layers, Database, Users, Upload, UserPlus, MessageSquare, Monitor } from '@lucide/vue'
 import { extractErrorMessage } from '@/utils/error'
 
 const loading = ref(true)
@@ -184,7 +183,6 @@ const stats = ref({
   model_name: null as string | null,
 })
 
-// 健康检查状态
 const healthLoading = ref(true)
 const health = ref({
   backend: false,
@@ -252,12 +250,14 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .dashboard-page {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: $spacing-md;
   margin-bottom: $spacing-xl;
 }
@@ -308,7 +308,8 @@ onMounted(() => {
   background: $color-card-bg;
   border: 1px solid $color-border;
   border-radius: $control-radius;
-  min-width: 180px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .health-dot {
@@ -329,7 +330,7 @@ onMounted(() => {
 .health-label {
   font-size: $font-size-sm;
   color: $color-text-secondary;
-  flex: 1;
+  white-space: nowrap;
 }
 
 .health-detail {
@@ -344,13 +345,13 @@ onMounted(() => {
 
 .quick-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: $spacing-md;
 }
 
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: $spacing-md;
 }
 
@@ -359,6 +360,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 4px 0;
+  gap: $spacing-sm;
 }
 
 .status-label {
@@ -372,21 +374,54 @@ onMounted(() => {
   font-weight: 500;
 }
 
-@media (max-width: 1400px) {
+// ---- 统一响应式断点 ----
+
+// Desktop large → 3 columns stat cards
+@media (min-width: 1200px) and (max-width: 1599px) {
   .stat-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 1200px) {
+// Tablet (768px ~ 1199px)
+@media (min-width: 768px) and (max-width: 1199px) {
   .stat-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
   .quick-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
   .status-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+// Mobile (< 768px)
+@media (max-width: 767px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+    gap: $spacing-sm;
+  }
+
+  .quick-grid {
+    grid-template-columns: 1fr;
+    gap: $spacing-sm;
+  }
+
+  .status-grid {
+    grid-template-columns: 1fr;
+    gap: $spacing-sm;
+  }
+
+  .health-item {
+    min-width: 0;
+    flex: 1 1 calc(50% - $spacing-sm);
+  }
+
+  .health-detail {
+    display: none;
   }
 }
 </style>

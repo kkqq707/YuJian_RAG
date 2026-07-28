@@ -171,7 +171,7 @@
     <el-dialog
       v-model="showJWTConfirm"
       title="确认重新生成 JWT 密钥"
-      width="480px"
+      :width="jwtDialogWidth"
       :close-on-click-modal="false"
     >
       <el-alert
@@ -199,7 +199,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, inject } from 'vue'
+import type { Ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import adminSystemApi from '@/api/adminSystem'
 import type { SystemInfoResponse, SecuritySettingsResponse } from '@/types/api'
@@ -207,6 +208,10 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import LoadingBlock from '@/components/common/LoadingBlock.vue'
 import { extractErrorMessage } from '@/utils/error'
+
+// ---- 响应式 ----
+const isMobile = inject<Ref<boolean>>('isMobile', ref(false))
+const jwtDialogWidth = computed(() => isMobile.value ? 'calc(100vw - 24px)' : '480px')
 
 // 系统信息
 const infoLoading = ref(true)
@@ -343,7 +348,9 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .settings-page {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .section {
@@ -365,6 +372,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: $spacing-sm 0;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
 }
 
 .setting-action {
@@ -372,12 +381,16 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: $spacing-sm 0;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
 }
 
 .setting-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .setting-label {
@@ -389,12 +402,14 @@ onMounted(() => {
 .setting-desc {
   font-size: $font-size-xs;
   color: $color-text-tertiary;
+  word-break: break-word;
 }
 
 .setting-value {
   font-size: $font-size-sm;
   font-weight: 500;
   color: $color-text-primary;
+  flex-shrink: 0;
 }
 
 .security-content {
@@ -407,5 +422,28 @@ onMounted(() => {
   margin-left: $spacing-sm;
   font-size: $font-size-xs;
   color: $color-text-tertiary;
+}
+
+// ---- 移动端适配 ----
+@media (max-width: 767px) {
+  .setting-action {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .el-button {
+      align-self: stretch;
+      min-height: var(--touch-target-min);
+    }
+  }
+
+  :deep(.el-form-item__content) {
+    flex-wrap: wrap;
+  }
+
+  .form-hint {
+    margin-left: 0;
+    margin-top: $spacing-xs;
+    display: block;
+  }
 }
 </style>

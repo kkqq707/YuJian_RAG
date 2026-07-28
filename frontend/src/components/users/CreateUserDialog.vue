@@ -2,7 +2,7 @@
   <el-dialog
     v-model="visible"
     title="新增用户"
-    width="520px"
+    :width="isMobile ? 'calc(100vw - 24px)' : '520px'"
     :close-on-click-modal="false"
     @closed="handleClosed"
   >
@@ -10,7 +10,7 @@
       ref="formRef"
       :model="form"
       :rules="rules"
-      label-width="100px"
+      :label-width="isMobile ? '80px' : '100px'"
       label-position="left"
     >
       <el-form-item label="用户名" prop="username">
@@ -84,7 +84,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, inject } from 'vue'
+import type { Ref } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { useUsersStore } from '@/stores/users'
@@ -102,6 +103,7 @@ const emit = defineEmits<{
 const usersStore = useUsersStore()
 
 const visible = ref(props.modelValue)
+const isMobile = inject<Ref<boolean>>('isMobile', ref(false))
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
 
@@ -216,5 +218,15 @@ function handleClosed(): void {
   display: flex;
   justify-content: flex-end;
   gap: $spacing-sm;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+
+    .el-button {
+      width: 100%;
+      margin-left: 0 !important;
+      min-height: var(--touch-target-min);
+    }
+  }
 }
 </style>

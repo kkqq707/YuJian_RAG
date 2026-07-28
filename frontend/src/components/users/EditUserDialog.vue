@@ -68,6 +68,7 @@ const emit = defineEmits<{
 const usersStore = useUsersStore()
 
 const visible = ref(props.modelValue)
+const isMobile = inject<Ref<boolean>>('isMobile', ref(false))
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
 
@@ -134,5 +135,15 @@ function handleClosed(): void {
   display: flex;
   justify-content: flex-end;
   gap: $spacing-sm;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+
+    .el-button {
+      width: 100%;
+      margin-left: 0 !important;
+      min-height: var(--touch-target-min);
+    }
+  }
 }
 </style>

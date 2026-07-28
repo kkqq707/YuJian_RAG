@@ -461,12 +461,15 @@ function changeTypeLabel(type: string): string {
 
 <style lang="scss" scoped>
 .knowledge-detail-page {
-  max-width: 1200px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .header-actions {
   display: flex;
   gap: $spacing-sm;
+  flex-wrap: wrap;
 }
 
 .section-title {
@@ -482,6 +485,8 @@ function changeTypeLabel(type: string): string {
   justify-content: space-between;
   align-items: center;
   margin-bottom: $spacing-md;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
 
   .section-title {
     margin-bottom: 0;
@@ -498,7 +503,7 @@ function changeTypeLabel(type: string): string {
 // Info grid
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: $spacing-md;
 }
 
@@ -544,6 +549,7 @@ function changeTypeLabel(type: string): string {
   display: flex;
   gap: 4px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 // Content preview
@@ -551,6 +557,7 @@ function changeTypeLabel(type: string): string {
   display: flex;
   align-items: center;
   gap: $spacing-md;
+  flex-wrap: wrap;
 }
 
 .page-info {
@@ -618,9 +625,40 @@ function changeTypeLabel(type: string): string {
   line-height: 1.6;
 }
 
-@media (max-width: 768px) {
+// ---- 统一响应式断点 ----
+
+// Tablet (768px ~ 1199px)
+@media (min-width: 768px) and (max-width: 1199px) {
   .info-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+// Mobile (< 768px)
+@media (max-width: 767px) {
+  .info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: $spacing-sm;
+  }
+
+  .preview-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .header-actions {
+    width: 100%;
+
+    .el-button {
+      flex: 1;
+      min-height: var(--touch-target-min);
+    }
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

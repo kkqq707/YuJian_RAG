@@ -448,6 +448,7 @@ function handleReset(): void {
 
 <style lang="scss" scoped>
 .api-config-page {
+  width: 100%;
   max-width: 960px;
   margin: 0 auto;
 }
@@ -480,6 +481,7 @@ function handleReset(): void {
   font-weight: 600;
   font-size: $font-size-md;
   color: $color-text-primary;
+  flex-wrap: wrap;
 
   .status-tag {
     margin-left: auto;
@@ -494,17 +496,20 @@ function handleReset(): void {
   font-family: monospace;
   font-size: $font-size-sm;
   color: $color-text-secondary;
+  word-break: break-all;
 }
 
 .form-hint {
   font-size: $font-size-xs;
   color: $color-text-tertiary;
+  word-break: break-word;
 }
 
 .form-actions {
   display: flex;
   gap: $spacing-md;
   margin-top: $spacing-lg;
+  flex-wrap: wrap;
 }
 
 .test-result {
@@ -515,6 +520,7 @@ function handleReset(): void {
     font-family: monospace;
     font-size: $font-size-sm;
     color: $color-text-secondary;
+    word-break: break-all;
   }
 }
 
@@ -525,6 +531,7 @@ function handleReset(): void {
     margin: $spacing-xs 0 0;
     font-size: $font-size-sm;
     color: $color-text-secondary;
+    word-break: break-word;
 
     code {
       background: $color-bg-tertiary;
@@ -542,5 +549,31 @@ function handleReset(): void {
 .empty-hint {
   color: $color-text-tertiary;
   font-size: $font-size-sm;
+}
+
+// ---- 移动端适配 ----
+@media (max-width: 767px) {
+  .config-card {
+    :deep(.el-card__header) {
+      padding: $spacing-sm $spacing-md;
+    }
+
+    :deep(.el-card__body) {
+      padding: $spacing-md;
+    }
+  }
+
+  .config-form {
+    max-width: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column;
+
+    .el-button {
+      width: 100%;
+      min-height: var(--touch-target-min);
+    }
+  }
 }
 </style>

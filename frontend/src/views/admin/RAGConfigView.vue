@@ -257,17 +257,20 @@ function handleRefresh() {
 
 <style lang="scss" scoped>
 .rag-config-page {
-  max-width: 1200px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .config-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: $spacing-lg;
   margin-top: $spacing-lg;
 }
 
-@media (max-width: 900px) {
+// Tablet and below → single column
+@media (max-width: 1199px) {
   .config-grid {
     grid-template-columns: 1fr;
   }
@@ -291,6 +294,7 @@ function handleRefresh() {
   font-size: $font-size-sm;
   color: $color-text-tertiary;
   margin: 0 0 $spacing-md 0;
+  word-break: break-word;
 }
 
 .slider-row {
@@ -310,5 +314,22 @@ function handleRefresh() {
   margin-top: $spacing-xl;
   padding-top: $spacing-lg;
   border-top: 1px solid $color-border;
+  flex-wrap: wrap;
+}
+
+// ---- 移动端适配 ----
+@media (max-width: 767px) {
+  .app-card {
+    padding: $spacing-md;
+  }
+
+  .action-bar {
+    flex-direction: column;
+
+    .el-button {
+      width: 100%;
+      min-height: var(--touch-target-min);
+    }
+  }
 }
 </style>

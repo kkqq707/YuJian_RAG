@@ -335,17 +335,20 @@ function handlePasswordReset(): void {
 
 <style lang="scss" scoped>
 .users-page {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 .header-actions {
   display: flex;
   gap: $spacing-sm;
+  flex-wrap: wrap;
 }
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: $spacing-md;
   margin-bottom: $spacing-lg;
 }
@@ -375,24 +378,39 @@ function handlePasswordReset(): void {
   padding: $spacing-lg 0;
 }
 
-@media (max-width: 1200px) {
+// ---- 统一响应式断点 ----
+
+// Tablet (768px ~ 1199px)
+@media (min-width: 768px) and (max-width: 1199px) {
   .stat-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 768px) {
+// Mobile (< 768px)
+@media (max-width: 767px) {
   .stat-grid {
     grid-template-columns: 1fr;
+    gap: $spacing-sm;
   }
 
   .filter-row {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .filter-input,
   .filter-select {
     width: 100%;
+  }
+
+  .header-actions {
+    width: 100%;
+
+    .el-button {
+      flex: 1;
+      min-height: var(--touch-target-min);
+    }
   }
 }
 </style>

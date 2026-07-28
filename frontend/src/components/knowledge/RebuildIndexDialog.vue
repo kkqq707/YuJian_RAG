@@ -2,7 +2,7 @@
   <el-dialog
     v-model="visible"
     title="重建全部索引"
-    width="520px"
+    :width="isMobile ? 'calc(100vw - 24px)' : '520px'"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
     @closed="handleClosed"
@@ -76,7 +76,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, inject } from 'vue'
+import type { Ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { extractErrorMessage } from '@/utils/error'
@@ -94,6 +95,7 @@ const emit = defineEmits<{
 const knowledgeStore = useKnowledgeStore()
 
 const visible = ref(props.modelValue)
+const isMobile = inject<Ref<boolean>>('isMobile', ref(false))
 const confirmText = ref('')
 const rebuilding = ref(false)
 const result = ref<RebuildIndexResponse | null>(null)
@@ -179,5 +181,15 @@ function handleClosed(): void {
   display: flex;
   justify-content: flex-end;
   gap: $spacing-sm;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+
+    .el-button {
+      width: 100%;
+      margin-left: 0 !important;
+      min-height: var(--touch-target-min);
+    }
+  }
 }
 </style>
