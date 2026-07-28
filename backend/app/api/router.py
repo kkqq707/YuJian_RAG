@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from backend.app.api.routes import admin_api_config, admin_files, admin_rag_config, admin_ragas, admin_system, admin_users, auth, chat, health, system
+from backend.app.api.routes import admin_api_config, admin_document_tasks, admin_files, admin_rag_config, admin_ragas, admin_system, admin_users, auth, chat, health, system
 from backend.app.config import get_settings
 
 settings = get_settings()
@@ -25,3 +25,4 @@ api_router.include_router(admin_system.logs_router)
 api_router.include_router(admin_api_config.router)
 api_router.include_router(admin_rag_config.router)
 api_router.include_router(admin_ragas.router)
+api_router.include_router(admin_document_tasks.router)

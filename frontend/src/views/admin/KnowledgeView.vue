@@ -167,6 +167,8 @@
         @delete-file="handleDeleteFile"
         @page-change="handlePageChange"
         @sort-change="handleSortChange"
+        @cancel-task="handleCancelTask"
+        @retry-task="handleRetryTask"
       />
     </div>
 
@@ -191,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { extractErrorMessage } from '@/utils/error'
@@ -247,8 +249,30 @@ const formattedUpdateTime = computed(() => {
 
 // ---- Lifecycle ----
 
+let visibilityListener: (() => void) | null = null
+
 onMounted(() => {
   store.refreshAll()
+  // Phase 8: 开始任务轮询
+  store.startTaskPolling()
+
+  // 页面隐藏时暂停轮询
+  visibilityListener = () => {
+    if (document.hidden) {
+      store.stopTaskPolling()
+    } else {
+      store.startTaskPolling()
+    }
+  }
+  document.addEventListener('visibilitychange', visibilityListener)
+})
+
+onBeforeUnmount(() => {
+  // Phase 8: 清理轮询
+  store.stopTaskPolling()
+  if (visibilityListener) {
+    document.removeEventListener('visibilitychange', visibilityListener)
+  }
 })
 
 // ---- Actions ----
@@ -277,8 +301,8 @@ function handleViewDetail(file: KnowledgeFileItem): void {
 
 async function handleIndexFile(file: KnowledgeFileItem): Promise<void> {
   try {
-    await store.indexFile(file.id)
-    ElMessage.success(`文件 "${file.original_name}" 索引完成`)
+    const result = await store.indexFile(file.id)
+    ElMessage.success(`索引任务已创建 (task_id=${result.task_id || '?'})`)
   } catch (err: unknown) {
     ElMessage.error(extractErrorMessage(err))
   }
@@ -288,6 +312,26 @@ async function handleDeleteFile(fileId: string): Promise<void> {
   try {
     await store.deleteFile(fileId)
     ElMessage.success('文件已删除')
+  } catch (err: unknown) {
+    ElMessage.error(extractErrorMessage(err))
+  }
+}
+
+// ---- Phase 8: 任务管理 ----
+
+async function handleCancelTask(taskId: number): Promise<void> {
+  try {
+    await store.cancelTask(taskId)
+    ElMessage.success('任务已取消')
+  } catch (err: unknown) {
+    ElMessage.error(extractErrorMessage(err))
+  }
+}
+
+async function handleRetryTask(taskId: number): Promise<void> {
+  try {
+    await store.retryTask(taskId)
+    ElMessage.success('重试任务已创建')
   } catch (err: unknown) {
     ElMessage.error(extractErrorMessage(err))
   }

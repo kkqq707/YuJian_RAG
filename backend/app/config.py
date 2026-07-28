@@ -114,6 +114,23 @@ class Settings(BaseSettings):
     UVICORN_BACKLOG: int = 128
     UVICORN_TIMEOUT_KEEP_ALIVE: int = 10
 
+    # ---- 文档上传 (Phase 8) ----
+    UPLOAD_CHUNK_SIZE_BYTES: int = 1048576  # 1MB chunks for streaming
+    MAX_UPLOAD_SIZE_MB: int = 50
+    MAX_UPLOAD_SIZE_BYTES: int = 50 * 1024 * 1024
+    MAX_FILES_PER_UPLOAD_REQUEST: int = 5
+
+    # ---- 文档后台任务 (Phase 8) ----
+    DOCUMENT_TASK_WORKERS: int = 1
+    DOCUMENT_TASK_QUEUE_SIZE: int = 20
+    DOCUMENT_TASK_QUEUE_TIMEOUT_SECONDS: int = 5
+    DOCUMENT_PARSE_TIMEOUT_SECONDS: int = 300
+    DOCUMENT_INDEX_TIMEOUT_SECONDS: int = 600
+    MAX_CONCURRENT_UPLOADS: int = 2
+    MAX_CONCURRENT_INDEX_TASKS: int = 1
+    MAX_PENDING_DOCUMENT_TASKS: int = 20
+    MAX_TASK_RETRY_COUNT: int = 3
+
     # ---- 日志目录 ----
     @property
     def LOG_DIR(self) -> Path:
@@ -128,13 +145,30 @@ class Settings(BaseSettings):
         "MAX_ACTIVE_RAG_REQUESTS_PER_USER",
         "SQLITE_BUSY_TIMEOUT_MS",
         "SQLITE_LOCK_RETRY_COUNT",
+        "UPLOAD_CHUNK_SIZE_BYTES",
+        "MAX_UPLOAD_SIZE_MB",
+        "DOCUMENT_TASK_WORKERS",
+        "DOCUMENT_TASK_QUEUE_SIZE",
+        "MAX_CONCURRENT_UPLOADS",
+        "MAX_CONCURRENT_INDEX_TASKS",
+        "MAX_FILES_PER_UPLOAD_REQUEST",
+        "MAX_PENDING_DOCUMENT_TASKS",
+        "MAX_TASK_RETRY_COUNT",
         mode="after",
     )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
-        """确保并发/线程池/超时值 >= 1。"""
+        """确保配置值 >= 1。"""
         if v < 1:
             raise ValueError(f"值必须 >= 1，当前值: {v}")
+        return v
+
+    @field_validator("DOCUMENT_TASK_WORKERS", mode="after")
+    @classmethod
+    def validate_workers(cls, v: int) -> int:
+        """Phase 8: 任务 worker 数量上限 8（2核4GB 推荐 1）。"""
+        if v > 8:
+            raise ValueError(f"DOCUMENT_TASK_WORKERS 不能超过 8（当前值: {v}）")
         return v
 
     @field_validator("SQLITE_LOCK_RETRY_COUNT", mode="after")

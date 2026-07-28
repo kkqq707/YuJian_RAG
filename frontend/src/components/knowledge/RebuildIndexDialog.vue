@@ -38,11 +38,11 @@
     <!-- 进度状态 -->
     <div v-if="rebuilding" class="rebuild-progress">
       <el-alert type="info" :closable="false" show-icon>
-        <template #title>正在重建索引，请稍候...</template>
+        <template #title>正在创建重建任务，请稍候...</template>
       </el-alert>
     </div>
 
-    <!-- 结果 -->
+    <!-- 结果 — Phase 8: 异步任务 -->
     <div v-if="result" class="rebuild-result">
       <el-alert
         :type="result.success ? 'success' : 'error'"
@@ -50,11 +50,11 @@
         show-icon
       >
         <template #title>
-          {{ result.success ? '重建完成' : '重建失败' }}
+          {{ result.success ? '重建任务已创建' : '重建失败' }}
         </template>
         <template v-if="result.success" #default>
-          共生成 <strong>{{ result.total_chunks }}</strong> 个知识片段，
-          耗时 <strong>{{ result.elapsed_seconds?.toFixed(1) }}</strong> 秒。
+          任务 ID: <strong>{{ result.task_id }}</strong>，
+          重建将在后台执行，可查看任务进度。
         </template>
       </el-alert>
     </div>
@@ -81,7 +81,7 @@ import type { Ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import { extractErrorMessage } from '@/utils/error'
-import type { RebuildIndexResponse } from '@/types/api'
+import type { RebuildAcceptedResponse } from '@/types/api'
 
 const props = defineProps<{
   modelValue: boolean
@@ -89,7 +89,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  rebuilt: [result: RebuildIndexResponse]
+  rebuilt: [result: RebuildAcceptedResponse]
 }>()
 
 const knowledgeStore = useKnowledgeStore()
@@ -98,7 +98,7 @@ const visible = ref(props.modelValue)
 const isMobile = inject<Ref<boolean>>('isMobile', ref(false))
 const confirmText = ref('')
 const rebuilding = ref(false)
-const result = ref<RebuildIndexResponse | null>(null)
+const result = ref<RebuildAcceptedResponse | null>(null)
 
 watch(() => props.modelValue, (val) => {
   visible.value = val

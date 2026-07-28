@@ -4,14 +4,14 @@
 
 端点:
 - GET    /api/v1/admin/files                    — 知识库文件列表
-- POST   /api/v1/admin/files/upload              — 上传知识库文件
+- POST   /api/v1/admin/files/upload              — 上传知识库文件 (202)
 - DELETE /api/v1/admin/files/{file_id}           — 删除知识库文件
 - GET    /api/v1/admin/files/{file_id}           — 文件详情（含版本历史）
 - GET    /api/v1/admin/files/{file_id}/content   — 文件内容预览（分页）
-- POST   /api/v1/admin/files/{file_id}/index    — 单文件索引
+- POST   /api/v1/admin/files/{file_id}/index    — 单文件索引 (202)
 - DELETE /api/v1/admin/files/{file_id}/versions/{version_id} — 删除版本
 - POST   /api/v1/admin/files/{file_id}/versions/{version_id}/restore — 恢复版本
-- POST   /api/v1/admin/files/rebuild-index       — 重建索引
+- POST   /api/v1/admin/files/rebuild-index       — 重建索引 (202)
 - GET    /api/v1/admin/files/index-status        — 索引状态
 - GET    /api/v1/admin/files/operation-logs      — 操作日志
 """
@@ -24,6 +24,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy.orm import Session
 
+from backend.app.config import get_settings
 from backend.app.database import get_db
 from backend.app.models.user import User
 from backend.app.schemas.admin_files import (
@@ -37,6 +38,10 @@ from backend.app.schemas.admin_files import (
     RebuildIndexResponse,
     SingleFileIndexResponse,
     VersionActionResponse,
+)
+from backend.app.schemas.document_task import (
+    RebuildAcceptedResponse,
+    UploadAcceptedResponse,
 )
 from backend.app.security.dependencies import require_admin
 from backend.app.services.admin_files_service import AdminFilesService
@@ -86,36 +91,35 @@ async def list_files(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/upload", response_model=FileUploadResponse, summary="上传知识库文件")
+@router.post("/upload", summary="上传知识库文件 (Phase 8: 异步处理)")
 async def upload_files(
     request: Request,
-    files: list[UploadFile] = File(..., description="知识库文件（txt/pdf/docx/md，单文件最大 20MB）"),
+    files: list[UploadFile] = File(..., description="知识库文件（txt/pdf/docx/md/xlsx，单文件最大 50MB）"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """上传知识库文件并自动索引（带版本管理）。
+    """上传知识库文件，文件保存后立即返回 202，索引在后台执行。
 
     支持格式: txt, pdf, docx, md, xlsx
-    单文件最大: 20MB
-    支持一次上传多个文件
+    单文件最大: 50MB
+    一次最多: 5 个文件
 
-    上传成功后自动执行:
-    DocumentLoader → TextSplitter → Embedding → Chroma
-
-    版本管理:
-    - 相同哈希 → 提示已存在，跳过
-    - 同名不同哈希 → 自动生成新版本 (v2, v3...)
+    上传成功后返回 task_id 用于追踪处理进度。
 
     需要管理员权限。
     """
     if not files:
         raise HTTPException(status_code=422, detail="请选择要上传的文件")
 
-    if len(files) > 10:
-        raise HTTPException(status_code=422, detail="单次最多上传 10 个文件")
+    max_files = get_settings().MAX_FILES_PER_UPLOAD_REQUEST
+    if len(files) > max_files:
+        raise HTTPException(
+            status_code=422,
+            detail=f"单次最多上传 {max_files} 个文件",
+        )
 
     service = AdminFilesService()
-    result = await service.upload_files(files)
+    result = await service.upload_files_async(files, created_by=current_user.username)
 
     # 审计日志
     ip, ua = _get_client_info(request)
@@ -129,7 +133,8 @@ async def upload_files(
         user_agent=ua,
     )
 
-    return FileUploadResponse(**result)
+    # Phase 8: 返回包含 task 信息的响应
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -137,34 +142,34 @@ async def upload_files(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/rebuild-index", response_model=RebuildIndexResponse, summary="重建知识库索引")
+@router.post("/rebuild-index", summary="重建知识库索引 (Phase 8: 异步处理)")
 async def rebuild_index(
     request: Request,
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """重建全部上传文件索引。
+    """重建全部上传文件索引（后台异步执行）。
 
     流程:
-    1. 从数据库读取活跃上传文件列表
-    2. 清空 Chroma 向量库
-    3. 重置所有文件索引状态为 pending
-    4. 逐个重新加载、切分、向量化并写入 Chroma
-    5. 更新每个文件的索引状态
+    1. 创建重建任务
+    2. 入队后台处理
+    3. 立即返回 202 + task_id
+
+    可通过 GET /api/v1/admin/document-tasks/{task_id} 追踪进度。
 
     注意:
-    - 仅索引通过上传 API 管理的文件，不扫描 data/builtin/ 目录
-    - 此操作会清空并重建整个向量库，可能耗时较长
+    - 仅索引通过上传 API 管理的文件
+    - 此操作会清空并重建整个向量库
 
     需要管理员权限。
     """
     service = AdminFilesService()
     try:
-        result = await service.rebuild_index()
+        result = await service.rebuild_index_async(created_by=current_user.username)
     except DuplicateOperationError as e:
         raise HTTPException(status_code=409, detail=e.message)
-    except VectorStoreBusyError as e:
-        raise HTTPException(status_code=503, detail=e.message)
+    except ValueError as e:
+        raise HTTPException(status_code=503 if "队列满" in str(e) else 409, detail=str(e))
 
     # 审计日志
     ip, ua = _get_client_info(request)
@@ -173,14 +178,12 @@ async def rebuild_index(
         admin_user=current_user,
         action="index_rebuild",
         target_type="system",
-        detail=f"重建索引: {'成功' if result['success'] else '失败'}, "
-        f"{result['total_chunks']} 个片段, "
-        f"耗时 {result['elapsed_seconds']:.1f}s",
+        detail=f"创建重建任务: task_id={result.get('task_id')}",
         ip_address=ip,
         user_agent=ua,
     )
 
-    return RebuildIndexResponse(**result)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -419,24 +422,30 @@ async def restore_version(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{file_id}/index", response_model=SingleFileIndexResponse, summary="为单个文件建立索引")
+@router.post("/{file_id}/index", summary="为单个文件建立索引 (Phase 8: 异步处理)")
 async def index_single_file(
     request: Request,
     file_id: str,
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """为指定文件重新建立索引。
+    """为指定文件创建后台索引任务。
 
-    适用于上传后尚未索引、或索引失败需要重试的文件。
+    创建任务后立即返回 202，索引在后台执行。
+    可通过 GET /api/v1/admin/document-tasks?document_id={file_id} 追踪进度。
 
     需要管理员权限。
     """
     service = AdminFilesService()
     try:
-        result = await service.index_single_file(file_id)
-    except VectorStoreBusyError as e:
-        raise HTTPException(status_code=503, detail=e.message)
+        result = await service.index_single_file_async(file_id, created_by=current_user.username)
+    except ValueError as e:
+        error_str = str(e)
+        if "队列满" in error_str:
+            raise HTTPException(status_code=503, detail=error_str)
+        if "已有活跃" in error_str or "冲突" in error_str:
+            raise HTTPException(status_code=409, detail=error_str)
+        raise HTTPException(status_code=400, detail=error_str)
 
     # 审计日志
     ip, ua = _get_client_info(request)
@@ -446,9 +455,9 @@ async def index_single_file(
         action="file_index",
         target_type="knowledge_file",
         target_id=file_id,
-        detail=f"单文件索引: {'成功' if result['success'] else '失败'}, {result['chunk_count']} chunks",
+        detail=f"创建索引任务: task_id={result.get('task_id')}",
         ip_address=ip,
         user_agent=ua,
     )
 
-    return SingleFileIndexResponse(**result)
+    return result

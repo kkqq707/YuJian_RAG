@@ -268,6 +268,37 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("  [WARN] 自动备份启动失败: %s", str(e).split(chr(10))[0][:150])
 
+    # ---- 8. 文档后台任务运行时 (Phase 8) ----
+    logger.info("Document Tasks:")
+    try:
+        from backend.app.services.document_task_runtime import get_document_task_runtime
+        from backend.app.services.document_task_service import DocumentTaskService
+
+        task_runtime = get_document_task_runtime()
+        task_service = DocumentTaskService()
+
+        # 启动恢复
+        recovery_result = task_service.recover_on_startup()
+
+        await task_runtime.start(
+            task_processor=task_service.process_task,
+            num_workers=settings.DOCUMENT_TASK_WORKERS,
+            queue_size=settings.DOCUMENT_TASK_QUEUE_SIZE,
+            max_concurrent_uploads=settings.MAX_CONCURRENT_UPLOADS,
+        )
+        app.state.document_task_runtime = task_runtime
+
+        logger.info("  workers:     %d", settings.DOCUMENT_TASK_WORKERS)
+        logger.info("  queue_size:  %d", settings.DOCUMENT_TASK_QUEUE_SIZE)
+        logger.info("  status:      [OK]")
+        if recovery_result["interrupted_tasks"] > 0:
+            logger.info("  恢复:        interrupted=%d, re_enqueued=%d",
+                       recovery_result["interrupted_tasks"],
+                       recovery_result["re_enqueued_pending"])
+    except Exception as e:
+        logger.warning("  [WARN] 文档任务运行时启动失败: %s",
+                      str(e).split(chr(10))[0][:150])
+
     total_elapsed = round(time.perf_counter() - t0, 2)
     logger.info("=" * 60)
     logger.info("  RAG ready. 总耗时 %.2fs", total_elapsed)
@@ -280,6 +311,14 @@ async def lifespan(app: FastAPI):
     # 关闭时
     from backend.app.services.backup_service import stop_auto_backup
     stop_auto_backup()
+
+    # Phase 8: 关闭文档任务运行时
+    try:
+        _task_runtime = getattr(app.state, "document_task_runtime", None)
+        if _task_runtime:
+            await _task_runtime.stop(graceful=True, timeout=30.0)
+    except Exception as e:
+        logger.warning("关闭文档任务运行时失败: %s", str(e)[:200])
 
     # 关闭推理运行时
     await runtime.close()

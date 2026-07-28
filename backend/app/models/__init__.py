@@ -8,10 +8,11 @@ from backend.app.models.system_config import SystemConfig
 from backend.app.models.llm_config import LLMConfig
 from backend.app.models.system_setting import SystemSetting
 from backend.app.models.rag_config import RAGConfig
+from backend.app.models.document_task import DocumentTask
 
 __all__ = [
     "User", "RefreshToken", "AdminAuditLog",
     "ChatSession", "ChatMessage",
     "SystemConfig", "LLMConfig", "SystemSetting",
-    "RAGConfig",
+    "RAGConfig", "DocumentTask",
 ]

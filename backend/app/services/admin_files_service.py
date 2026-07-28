@@ -30,6 +30,24 @@ from typing import Optional
 from fastapi import UploadFile
 
 from backend.app.config import get_settings
+from backend.app.schemas.document_task import (
+    RebuildAcceptedResponse,
+    UploadAcceptedResponse,
+)
+from backend.app.services.document_task_runtime import get_document_task_runtime
+from backend.app.services.document_task_service import DocumentTaskService
+from backend.app.services.file_upload import (
+    stream_upload_to_disk,
+    check_duplicate_file,
+    validate_extension,
+    validate_safe_filename,
+    ERR_FILE_TOO_LARGE,
+    ERR_UNSUPPORTED_FILE_TYPE,
+    ERR_EMPTY_FILE,
+    ERR_INVALID_FILE_CONTENT,
+    ERR_DUPLICATE_DOCUMENT,
+    ERR_UPLOAD_BUSY,
+)
 from backend.app.vector_store_runtime import (
     get_vector_store_runtime,
     VectorStoreBusyError,
@@ -52,6 +70,195 @@ class AdminFilesService:
     def __init__(self):
         self.settings = get_settings()
         self._ensure_src_path()
+
+    # ------------------------------------------------------------------
+    # Phase 8: 异步上传（流式写入 + 后台索引）
+    # ------------------------------------------------------------------
+
+    async def upload_files_async(
+        self, files: list[UploadFile], created_by: str = "admin"
+    ) -> dict:
+        """流式上传文件并创建后台索引任务（Phase 8）。
+
+        流程:
+        1. 流式分块写入磁盘
+        2. 安全校验
+        3. SHA-256 校验
+        4. 创建 Document 记录
+        5. 创建 DocumentTask
+        6. 返回 202 Accepted
+
+        Returns dict 包含 file 结果和 task_id 信息。
+        """
+        from src.config import UPLOADS_DATA_DIR
+        UPLOADS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+        runtime = get_document_task_runtime()
+        task_service = DocumentTaskService()
+
+        results = []
+        succeeded = 0
+        failed = 0
+        skipped = 0
+
+        for file in files:
+            # Phase 8: 流式上传
+            upload_result = await stream_upload_to_disk(
+                file, UPLOADS_DATA_DIR,
+                upload_semaphore=runtime.upload_semaphore,
+            )
+
+            if not upload_result["success"]:
+                failed += 1
+                results.append({
+                    "filename": file.filename or "unknown",
+                    "success": False,
+                    "document_id": None,
+                    "task_id": None,
+                    "error": upload_result["error"],
+                    "error_code": upload_result.get("error_code"),
+                    "skipped": False,
+                })
+                continue
+
+            # 重复检测
+            existing = check_duplicate_file(
+                upload_result["file_hash"],
+                upload_result["file_size"],
+                UPLOADS_DATA_DIR,
+            )
+            if existing:
+                skipped += 1
+                results.append({
+                    "filename": file.filename or "unknown",
+                    "success": True,
+                    "document_id": existing["id"],
+                    "task_id": None,
+                    "error": "文件已存在，无需重新上传",
+                    "error_code": ERR_DUPLICATE_DOCUMENT,
+                    "skipped": True,
+                })
+                # 清理重复文件
+                dup_path = UPLOADS_DATA_DIR / upload_result["stored_name"]
+                if dup_path.exists():
+                    try:
+                        dup_path.unlink()
+                    except Exception:
+                        pass
+                continue
+
+            # 创建 Document 记录
+            try:
+                from src.knowledge_manager import (
+                    init_database, add_file_record,
+                )
+                init_database()
+                doc_id = add_file_record(
+                    original_name=upload_result["original_name"],
+                    stored_name=upload_result["stored_name"],
+                    stored_path=upload_result["stored_path"],
+                    file_type=upload_result["file_type"],
+                    file_size=upload_result["file_size"],
+                    file_hash=upload_result["file_hash"],
+                    source_type="upload",
+                    tenant_id="default",
+                )
+            except ValueError as e:
+                failed += 1
+                # 清理文件
+                dup_path = UPLOADS_DATA_DIR / upload_result["stored_name"]
+                if dup_path.exists():
+                    try:
+                        dup_path.unlink()
+                    except Exception:
+                        pass
+                results.append({
+                    "filename": file.filename or "unknown",
+                    "success": False,
+                    "document_id": None,
+                    "task_id": None,
+                    "error": str(e)[:300],
+                    "error_code": ERR_DUPLICATE_DOCUMENT,
+                    "skipped": False,
+                })
+                continue
+
+            # 创建后台索引任务
+            try:
+                task = task_service.create_index_task(
+                    document_id=doc_id,
+                    task_type="index_document",
+                    created_by=created_by,
+                )
+                task_id = task.id
+            except ValueError as e:
+                # 队列满 — 文档已保存但任务创建失败
+                logger.warning("索引任务创建失败: doc=%s — %s", doc_id, str(e)[:200])
+                task_id = None
+
+            succeeded += 1
+            results.append({
+                "filename": upload_result["original_name"],
+                "success": True,
+                "document_id": doc_id,
+                "task_id": task_id,
+                "error": None,
+                "skipped": False,
+            })
+
+        runtime.metrics.record_upload()
+        return {
+            "success": True,
+            "message": f"上传完成: 成功 {succeeded} 个, 失败 {failed} 个"
+            + (f", 跳过 {skipped} 个（已存在）" if skipped > 0 else ""),
+            "total": len(files),
+            "succeeded": succeeded,
+            "failed": failed,
+            "skipped": skipped,
+            "results": results,
+        }
+
+    # ------------------------------------------------------------------
+    # Phase 8: 异步重建索引
+    # ------------------------------------------------------------------
+
+    async def rebuild_index_async(self, created_by: str = "admin") -> dict:
+        """创建后台重建索引任务（Phase 8）。"""
+        # 检查重复
+        if AdminFilesService._rebuild_in_progress:
+            raise DuplicateOperationError("索引重建正在进行中，请稍后再试")
+
+        task_service = DocumentTaskService()
+        task = task_service.create_rebuild_task(created_by=created_by)
+
+        return RebuildAcceptedResponse(
+            success=True,
+            message="索引重建任务已创建，将在后台执行",
+            task_id=task.id,
+            status="pending",
+        ).model_dump()
+
+    # ------------------------------------------------------------------
+    # Phase 8: 异步单文件索引
+    # ------------------------------------------------------------------
+
+    async def index_single_file_async(
+        self, file_id: str, created_by: str = "admin"
+    ) -> dict:
+        """为单个文件创建后台索引任务（Phase 8）。"""
+        task_service = DocumentTaskService()
+        task = task_service.create_index_task(
+            document_id=file_id,
+            task_type="index_document",
+            created_by=created_by,
+        )
+        return UploadAcceptedResponse(
+            success=True,
+            message="索引任务已创建",
+            document_id=file_id,
+            task_id=task.id,
+            status="pending",
+        ).model_dump()
 
     # ------------------------------------------------------------------
     # 内部

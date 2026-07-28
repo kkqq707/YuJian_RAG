@@ -72,7 +72,7 @@
             已存在 — {{ item.error || '文件内容相同' }}
           </span>
           <span v-else-if="item.success" class="result-tag ok">
-            成功{{ item.version ? ' (' + item.version + ')' : '' }}
+            成功{{ item.task_id ? ' (task #' + item.task_id + ')' : '' }}
           </span>
           <span v-else class="result-tag fail" :title="item.error || ''">
             失败 — {{ item.error || '未知错误' }}
@@ -104,7 +104,7 @@ import { ElMessage } from 'element-plus'
 import type { UploadInstance, UploadFile, UploadRawFile } from 'element-plus'
 import { UploadFilled, CircleCheckFilled, Loading, Clock } from '@element-plus/icons-vue'
 import { useKnowledgeStore } from '@/stores/knowledge'
-import type { FileUploadResponse } from '@/types/api'
+import type { UploadAcceptedResponse } from '@/types/api'
 
 const props = defineProps<{
   modelValue: boolean
@@ -112,7 +112,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  uploaded: [result: FileUploadResponse]
+  uploaded: [result: UploadAcceptedResponse]
 }>()
 
 const allowedExtensions = ['.txt', '.md', '.pdf', '.docx', '.xlsx']
@@ -130,7 +130,7 @@ const dialogWidth = computed(() => isMobile.value ? 'calc(100vw - 24px)' : '640p
 const uploadRef = ref<UploadInstance>()
 const fileList = ref<UploadFile[]>([])
 const uploading = ref(false)
-const uploadResult = ref<FileUploadResponse | null>(null)
+const uploadResult = ref<UploadAcceptedResponse | null>(null)
 const progressPercent = ref(0)
 const progressStatus = ref<'success' | 'exception' | 'warning' | undefined>()
 

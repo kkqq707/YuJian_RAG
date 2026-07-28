@@ -18,6 +18,9 @@ import type {
   FileUploadResponse,
   RebuildIndexResponse,
   KnowledgeStats,
+  DocumentTaskItem,
+  UploadAcceptedResponse,
+  RebuildAcceptedResponse,
 } from '@/types/api'
 
 export interface KnowledgeFilters {
@@ -50,6 +53,11 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   const uploading = ref(false)
   const rebuilding = ref(false)
   const error = ref('')
+
+  // ---- Phase 8: 任务状态 ----
+  const activeTasks = ref<DocumentTaskItem[]>([])
+  const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null)
+  const pollingActive = ref(false)
 
   const filters = reactive<KnowledgeFilters>({
     search: '',
@@ -134,23 +142,27 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     }
   }
 
-  /** 上传文件 */
-  async function uploadFiles(filesToUpload: File[]): Promise<FileUploadResponse> {
+  /** 上传文件 — Phase 8: 返回 task 信息 */
+  async function uploadFiles(filesToUpload: File[]): Promise<UploadAcceptedResponse> {
     uploading.value = true
     try {
       const result = await adminFilesApi.uploadFiles(filesToUpload)
       await refreshAll()
+      // 开始轮询活跃任务
+      startTaskPolling()
       return result
     } finally {
       uploading.value = false
     }
   }
 
-  /** 单文件索引 */
-  async function indexFile(fileId: string): Promise<void> {
+  /** 单文件索引 — Phase 8: 创建后台任务 */
+  async function indexFile(fileId: string): Promise<{ success: boolean; message: string; task_id?: number }> {
     try {
-      await adminFilesApi.indexFile(fileId)
+      const result = await adminFilesApi.indexFile(fileId)
       await refreshAll()
+      startTaskPolling()
+      return result
     } catch (err: unknown) {
       throw new Error(extractErrorMessage(err))
     }
@@ -166,16 +178,85 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     }
   }
 
-  /** 重建全部索引 */
-  async function rebuildIndex(): Promise<RebuildIndexResponse> {
+  /** 重建全部索引 — Phase 8: 创建后台任务 */
+  async function rebuildIndex(): Promise<RebuildAcceptedResponse> {
     rebuilding.value = true
     try {
       const result = await adminFilesApi.rebuildIndex()
       await refreshAll()
+      startTaskPolling()
       return result
     } finally {
       rebuilding.value = false
     }
+  }
+
+  // ---- Phase 8: 任务轮询 ----
+
+  function startTaskPolling(): void {
+    if (pollingActive.value) return
+    pollingActive.value = true
+    fetchActiveTasks()
+    pollingTimer.value = setInterval(() => {
+      fetchActiveTasks()
+    }, 4000) // 4秒轮询
+  }
+
+  function stopTaskPolling(): void {
+    pollingActive.value = false
+    if (pollingTimer.value) {
+      clearInterval(pollingTimer.value)
+      pollingTimer.value = null
+    }
+  }
+
+  async function fetchActiveTasks(): Promise<void> {
+    try {
+      const result = await adminFilesApi.listTasks({
+        limit: 20,
+      })
+      activeTasks.value = result.tasks || []
+
+      // 若无活跃任务则停止轮询
+      const hasActive = activeTasks.value.some(
+        (t) => t.status === 'pending' || t.status === 'running' || t.status === 'cancel_requested'
+      )
+      if (!hasActive) {
+        stopTaskPolling()
+        await refreshAll()
+      }
+    } catch {
+      // 轮询失败不白屏
+    }
+  }
+
+  async function cancelTask(taskId: number): Promise<void> {
+    try {
+      await adminFilesApi.cancelTask(taskId)
+      await fetchActiveTasks()
+      await refreshAll()
+    } catch (err: unknown) {
+      throw new Error(extractErrorMessage(err))
+    }
+  }
+
+  async function retryTask(taskId: number): Promise<void> {
+    try {
+      await adminFilesApi.retryTask(taskId)
+      await fetchActiveTasks()
+      startTaskPolling()
+      await refreshAll()
+    } catch (err: unknown) {
+      throw new Error(extractErrorMessage(err))
+    }
+  }
+
+  /** 获取文档的活跃任务 */
+  function getDocumentTask(docId: string): DocumentTaskItem | undefined {
+    return activeTasks.value.find(
+      (t) => t.document_id === docId &&
+        ['pending', 'running', 'cancel_requested'].includes(t.status)
+    )
   }
 
   /** 刷新全部数据 */
@@ -227,6 +308,9 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     error,
     filters,
     pagination,
+    // Phase 8
+    activeTasks,
+    pollingActive,
     // Actions
     fetchFiles,
     fetchStatistics,
@@ -238,5 +322,12 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     resetFilters,
     setPage,
     reset,
+    // Phase 8 task actions
+    startTaskPolling,
+    stopTaskPolling,
+    fetchActiveTasks,
+    cancelTask,
+    retryTask,
+    getDocumentTask,
   }
 })

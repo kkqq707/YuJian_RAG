@@ -438,3 +438,87 @@ export interface OperationLogsResponse {
   total: number
   logs: OperationLogItem[]
 }
+
+// ---- 文档后台任务 (Phase 8) ----
+
+export interface DocumentTaskItem {
+  id: number
+  document_id: string
+  task_type: string
+  status: string  // pending | running | completed | failed | cancel_requested | cancelled
+  progress: number
+  current_step: string | null
+  error_code: string | null
+  error_message: string | null
+  created_by: string
+  created_at: string | null
+  started_at: string | null
+  completed_at: string | null
+  cancelled_at: string | null
+  retry_count: number
+  original_task_id: number | null
+  chunk_count: number | null
+}
+
+export interface DocumentTaskListResponse {
+  success: boolean
+  total: number
+  tasks: DocumentTaskItem[]
+}
+
+export interface DocumentTaskDetailResponse {
+  success: boolean
+  task: DocumentTaskItem | null
+  message?: string | null
+}
+
+export interface TaskActionResponse {
+  success: boolean
+  message: string
+  task_id: number
+  new_status?: string | null
+  error_code?: string | null
+}
+
+export interface DocumentTaskMetrics {
+  upload_active: number
+  upload_waiting: number
+  upload_total: number
+  upload_rejected_total: number
+  document_task_pending: number
+  document_task_running: number
+  document_task_completed_total: number
+  document_task_failed_total: number
+  document_task_cancelled_total: number
+  document_task_queue_full_total: number
+  document_parse_timeout_total: number
+  document_index_timeout_total: number
+  document_task_average_duration_ms: number
+}
+
+/** Phase 8: 上传异步响应 */
+export interface UploadAcceptedResponse {
+  success: boolean
+  message: string
+  total: number
+  succeeded: number
+  failed: number
+  skipped: number
+  results: Array<{
+    filename: string
+    success: boolean
+    document_id: string | null
+    task_id: number | null
+    error: string | null
+    error_code: string | null
+    skipped?: boolean
+  }>
+}
+
+/** Phase 8: 重建索引异步响应 */
+export interface RebuildAcceptedResponse {
+  success: boolean
+  message: string
+  task_id?: number | null
+  status: string
+}

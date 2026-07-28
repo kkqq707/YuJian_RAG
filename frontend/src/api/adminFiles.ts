@@ -13,11 +13,16 @@ import type {
   FileUploadResponse,
   FileDeleteResponse,
   RebuildIndexResponse,
+  RebuildAcceptedResponse,
   IndexStatusResponse,
   FileDetailResponse,
   FileContentResponse,
   VersionActionResponse,
   OperationLogsResponse,
+  DocumentTaskListResponse,
+  DocumentTaskDetailResponse,
+  TaskActionResponse,
+  UploadAcceptedResponse,
 } from '@/types/api'
 
 const adminFilesApi = {
@@ -28,8 +33,8 @@ const adminFilesApi = {
     return request.get('/admin/files', { params }).then((res) => res.data)
   },
 
-  /** 上传文件（支持多文件） */
-  uploadFiles(files: File[]): Promise<FileUploadResponse> {
+  /** 上传文件（支持多文件）— Phase 8: 返回 202 */
+  uploadFiles(files: File[]): Promise<UploadAcceptedResponse> {
     const formData = new FormData()
     files.forEach((file) => formData.append('files', file))
     return request
@@ -74,8 +79,8 @@ const adminFilesApi = {
       .then((res) => res.data)
   },
 
-  /** 重建全部索引 */
-  rebuildIndex(): Promise<RebuildIndexResponse> {
+  /** 重建全部索引 — Phase 8: 返回 202 */
+  rebuildIndex(): Promise<RebuildAcceptedResponse> {
     return request.post('/admin/files/rebuild-index').then((res) => res.data)
   },
 
@@ -84,8 +89,8 @@ const adminFilesApi = {
     return request.get('/admin/files/index-status').then((res) => res.data)
   },
 
-  /** 单文件索引 */
-  indexFile(fileId: string): Promise<{ success: boolean; message: string; chunk_count: number }> {
+  /** 单文件索引 — Phase 8: 返回 202 */
+  indexFile(fileId: string): Promise<{ success: boolean; message: string; task_id?: number }> {
     return request.post(`/admin/files/${fileId}/index`).then((res) => res.data)
   },
 
@@ -94,6 +99,34 @@ const adminFilesApi = {
     return request
       .get('/admin/files/operation-logs', { params: { limit } })
       .then((res) => res.data)
+  },
+
+  // ---- Phase 8: 文档后台任务 API ----
+
+  /** 获取文档任务列表 */
+  listTasks(params?: {
+    status?: string
+    task_type?: string
+    document_id?: string
+    offset?: number
+    limit?: number
+  }): Promise<DocumentTaskListResponse> {
+    return request.get('/admin/document-tasks', { params }).then((res) => res.data)
+  },
+
+  /** 获取任务详情 */
+  getTaskDetail(taskId: number): Promise<DocumentTaskDetailResponse> {
+    return request.get(`/admin/document-tasks/${taskId}`).then((res) => res.data)
+  },
+
+  /** 取消任务 */
+  cancelTask(taskId: number): Promise<TaskActionResponse> {
+    return request.post(`/admin/document-tasks/${taskId}/cancel`).then((res) => res.data)
+  },
+
+  /** 重试任务 */
+  retryTask(taskId: number): Promise<TaskActionResponse> {
+    return request.post(`/admin/document-tasks/${taskId}/retry`).then((res) => res.data)
   },
 }
 

@@ -62,8 +62,24 @@
         </template>
       </el-table-column>
 
+      <!-- 任务进度 (Phase 8) -->
+      <el-table-column label="任务进度" width="140" align="center">
+        <template #default="scope">
+          <template v-if="getDocTask(f(scope.row).id)">
+            <el-progress
+              :percentage="getDocTask(f(scope.row).id)!.progress"
+              :status="taskProgressStatus(getDocTask(f(scope.row).id)!)"
+              :stroke-width="6"
+              style="width: 100%"
+            />
+            <span class="task-step">{{ getDocTask(f(scope.row).id)!.current_step || getDocTask(f(scope.row).id)!.status }}</span>
+          </template>
+          <span v-else class="cell-mono">--</span>
+        </template>
+      </el-table-column>
+
       <!-- 操作 -->
-      <el-table-column label="操作" width="240" align="center" fixed="right">
+      <el-table-column label="操作" width="280" align="center" fixed="right">
         <template #default="scope">
           <div class="action-group">
             <el-button link type="primary" size="small" @click="handleViewContent(f(scope.row))">
@@ -72,8 +88,29 @@
             <el-button link type="primary" size="small" @click="handleViewDetail(f(scope.row))">
               详情
             </el-button>
+            <!-- Phase 8: 取消按钮（pending/running） -->
             <el-button
-              v-if="f(scope.row).index_status === 'pending' || f(scope.row).index_status === 'failed'"
+              v-if="getDocTask(f(scope.row).id) && canCancel(getDocTask(f(scope.row).id)!)"
+              link
+              type="warning"
+              size="small"
+              @click="handleCancelTask(f(scope.row))"
+            >
+              取消
+            </el-button>
+            <!-- Phase 8: 重试按钮（failed） -->
+            <el-button
+              v-if="getDocTask(f(scope.row).id) && canRetry(getDocTask(f(scope.row).id)!)"
+              link
+              type="warning"
+              size="small"
+              @click="handleRetryTask(f(scope.row))"
+            >
+              重试
+            </el-button>
+            <!-- 索引按钮（无活跃任务时可用） -->
+            <el-button
+              v-if="!getDocTask(f(scope.row).id) && (f(scope.row).index_status === 'pending' || f(scope.row).index_status === 'failed')"
               link
               type="warning"
               size="small"
@@ -84,7 +121,7 @@
               索引
             </el-button>
             <el-button
-              v-if="f(scope.row).index_status === 'indexed'"
+              v-if="!getDocTask(f(scope.row).id) && f(scope.row).index_status === 'indexed'"
               link
               type="warning"
               size="small"
@@ -138,9 +175,11 @@ import { ElMessage } from 'element-plus'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { extractErrorMessage } from '@/utils/error'
-import type { KnowledgeFileItem } from '@/types/api'
+import { useKnowledgeStore } from '@/stores/knowledge'
+import type { KnowledgeFileItem, DocumentTaskItem } from '@/types/api'
 
 const router = useRouter()
+const store = useKnowledgeStore()
 
 const props = defineProps<{
   files: KnowledgeFileItem[]
@@ -156,11 +195,43 @@ const emit = defineEmits<{
   'index-file': [file: KnowledgeFileItem]
   'delete-file': [fileId: string]
   'page-change': [page: number]
+  'cancel-task': [taskId: number]
+  'retry-task': [taskId: number]
 }>()
 
 const indexingId = ref<string | null>(null)
 const deleteDialogVisible = ref(false)
 const deleteTarget = ref<KnowledgeFileItem | null>(null)
+
+/** Phase 8: 获取文档关联的活跃任务 */
+function getDocTask(docId: string): DocumentTaskItem | undefined {
+  return store.getDocumentTask(docId)
+}
+
+function canCancel(task: DocumentTaskItem): boolean {
+  return ['pending', 'running'].includes(task.status)
+}
+
+function canRetry(task: DocumentTaskItem): boolean {
+  return ['failed', 'cancelled'].includes(task.status)
+}
+
+function taskProgressStatus(task: DocumentTaskItem): 'success' | 'exception' | 'warning' | undefined {
+  if (task.status === 'completed') return 'success'
+  if (task.status === 'failed') return 'exception'
+  if (task.status === 'cancelled') return 'warning'
+  return undefined
+}
+
+function handleCancelTask(file: KnowledgeFileItem): void {
+  const task = getDocTask(file.id)
+  if (task) emit('cancel-task', task.id)
+}
+
+function handleRetryTask(file: KnowledgeFileItem): void {
+  const task = getDocTask(file.id)
+  if (task) emit('retry-task', task.id)
+}
 
 const deleteMessage = computed(() => {
   if (!deleteTarget.value) return ''
@@ -295,6 +366,13 @@ function handlePageChange(page: number): void {
   display: flex;
   justify-content: flex-end;
   margin-top: $spacing-md;
+}
+
+.task-step {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: block;
+  margin-top: 2px;
 }
 
 // ---- 移动端适配 ----
