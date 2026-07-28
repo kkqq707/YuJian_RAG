@@ -176,6 +176,20 @@ export const useUsersStore = defineStore('users', () => {
     pagination.page = page
   }
 
+  /** 重置所有状态（退出登录时调用） */
+  function reset(): void {
+    users.value = []
+    statistics.value = {
+      total_users: 0,
+      admin_users: 0,
+      regular_users: 0,
+      disabled_users: 0,
+    }
+    loading.value = false
+    error.value = ''
+    resetFilters()
+  }
+
   return {
     // State
     users,
@@ -197,5 +211,6 @@ export const useUsersStore = defineStore('users', () => {
     refreshAll,
     resetFilters,
     setPage,
+    reset,
   }
 })

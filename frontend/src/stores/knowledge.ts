@@ -197,6 +197,26 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     pagination.page = page
   }
 
+  /** 重置所有状态（退出登录时调用） */
+  function reset(): void {
+    files.value = []
+    statistics.value = {
+      total_files: 0,
+      indexed_files: 0,
+      pending_files: 0,
+      failed_files: 0,
+      total_chunks: 0,
+      total_vectors: 0,
+      index_status: '未知',
+      last_update_time: '',
+    }
+    loading.value = false
+    uploading.value = false
+    rebuilding.value = false
+    error.value = ''
+    resetFilters()
+  }
+
   return {
     // State
     files,
@@ -217,5 +237,6 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     refreshAll,
     resetFilters,
     setPage,
+    reset,
   }
 })

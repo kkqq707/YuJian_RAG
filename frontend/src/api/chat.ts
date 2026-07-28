@@ -135,6 +135,68 @@ async function deleteSession(sessionId: number): Promise<{ success: boolean; mes
   return response.data
 }
 
+/** 更新会话标题 */
+async function updateSessionTitle(sessionId: number, title: string): Promise<{
+  success: boolean
+  message: string
+  session_id: number
+  title: string
+}> {
+  const response = await request.put<{
+    success: boolean
+    message: string
+    session_id: number
+    title: string
+  }>(`/chat/sessions/${sessionId}/title`, { title })
+  return response.data
+}
+
+/** 清空会话消息 */
+async function clearSessionMessages(sessionId: number): Promise<{
+  success: boolean
+  message: string
+  session_id: number
+  deleted_count: number
+}> {
+  const response = await request.delete<{
+    success: boolean
+    message: string
+    session_id: number
+    deleted_count: number
+  }>(`/chat/sessions/${sessionId}/messages`)
+  return response.data
+}
+
+/** 删除单条消息 */
+async function deleteMessage(messageId: number): Promise<{
+  success: boolean
+  message: string
+  message_id: number
+}> {
+  const response = await request.delete<{
+    success: boolean
+    message: string
+    message_id: number
+  }>(`/chat/messages/${messageId}`)
+  return response.data
+}
+
+/** 提交消息反馈（点赞/点踩） */
+async function submitMessageFeedback(messageId: number, rating: 'like' | 'dislike', comment?: string): Promise<{
+  success: boolean
+  message: string
+  message_id: number
+  rating: string
+}> {
+  const response = await request.post<{
+    success: boolean
+    message: string
+    message_id: number
+    rating: string
+  }>(`/chat/messages/${messageId}/feedback`, { rating, comment })
+  return response.data
+}
+
 const chatApi = {
   // 问答
   askQuestion,
@@ -146,6 +208,10 @@ const chatApi = {
   getSessionMessages,
   sendMessage,
   deleteSession,
+  updateSessionTitle,
+  clearSessionMessages,
+  deleteMessage,
+  submitMessageFeedback,
 }
 
 export default chatApi

@@ -11,6 +11,9 @@
  */
 
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import { getRefreshToken as getStoredRefreshToken, setRefreshToken as setStoredRefreshToken, clearAuthTokens } from '@/utils/token'
+
+const REFRESH_TOKEN_KEY = 'refresh_token'
 
 const request = axios.create({
   baseURL: '/api/v1',
@@ -60,7 +63,7 @@ function addRefreshSubscriber(cb: (token: string) => void): void {
 // ---- 刷新逻辑 ----
 
 async function doRefreshToken(): Promise<string> {
-  const storedRefreshToken = sessionStorage.getItem('refresh_token')
+  const storedRefreshToken = getStoredRefreshToken()
   if (!storedRefreshToken) {
     throw new Error('No refresh token available')
   }
@@ -72,7 +75,7 @@ async function doRefreshToken(): Promise<string> {
   const data = response.data
   accessToken = data.access_token
   refreshTokenValue = data.refresh_token
-  sessionStorage.setItem('refresh_token', data.refresh_token)
+  setStoredRefreshToken(data.refresh_token)
 
   // 通知 Pinia auth store 同步新的 accessToken（页面刷新后 auth store 的 token 已丢失）
   window.dispatchEvent(new CustomEvent('auth:token-refreshed', {
@@ -101,7 +104,7 @@ function handleAuthFailureOnce(): void {
   // 清除本地 Token
   accessToken = null
   refreshTokenValue = null
-  sessionStorage.removeItem('refresh_token')
+  clearAuthTokens()
 
   // 触发全局登出事件（由 App.vue 处理路由跳转和状态清理）
   window.dispatchEvent(new CustomEvent('auth:logout'))

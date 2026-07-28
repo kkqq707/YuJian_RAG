@@ -291,7 +291,21 @@ export const useAuthStore = defineStore('auth', () => {
       clearAllUserStorage(previousUserId)
     }
 
-    // Step 4: 清除遗留全局 key
+    // Step 4: 重置 admin stores（知识库和用户管理）
+    try {
+      const { useKnowledgeStore } = await import('@/stores/knowledge')
+      useKnowledgeStore().reset()
+    } catch {
+      // store 可能未初始化
+    }
+    try {
+      const { useUsersStore } = await import('@/stores/users')
+      useUsersStore().reset()
+    } catch {
+      // store 可能未初始化
+    }
+
+    // Step 5: 清除遗留全局 key
     localStorage.removeItem('remembered_username')
   }
 

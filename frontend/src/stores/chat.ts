@@ -184,11 +184,25 @@ export const useChatStore = defineStore('chat', () => {
   /** 重命名会话 */
   async function renameSession(sessionId: string, newTitle: string): Promise<boolean> {
     const trimmed = newTitle.trim()
-    if (!trimmed || trimmed.length > 30) return false
+    if (!trimmed || trimmed.length > 255) return false
     const session = sessions.value.find((s) => s.id === sessionId)
     if (!session) return false
+
+    // 乐观更新
+    const oldTitle = session.title
     session.title = trimmed
     session.updatedAt = new Date().toISOString()
+
+    // 后端持久化（跳过本地会话）
+    if (!sessionId.startsWith('local_')) {
+      try {
+        await chatApi.updateSessionTitle(Number(sessionId), trimmed)
+      } catch {
+        // 回滚
+        session.title = oldTitle
+        return false
+      }
+    }
     return true
   }
 

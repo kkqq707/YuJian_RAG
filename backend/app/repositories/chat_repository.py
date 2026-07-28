@@ -206,7 +206,7 @@ def get_session_messages(
 
 
 def get_message_count(db: Session, session_id: int) -> int:
-    """获取会话的消息数量。
+    """获取会话的消息数量（不验证所有权，仅用于已通过所有权验证的场景）。
 
     Parameters
     ----------
@@ -224,11 +224,68 @@ def get_message_count(db: Session, session_id: int) -> int:
     )
 
 
+def get_message_count_for_user(
+    db: Session, session_id: int, user_id: int
+) -> Optional[int]:
+    """获取会话的消息数量（同时验证所有权）。
+
+    如果会话不属于当前用户，返回 None。
+
+    Parameters
+    ----------
+    db : Session
+    session_id : int
+    user_id : int
+
+    Returns
+    -------
+    Optional[int]
+        None 表示会话不存在或不属于该用户
+    """
+    session = get_session_by_id(db, session_id, user_id)
+    if session is None:
+        return None
+    return (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session_id)
+        .count()
+    )
+
+
+def get_message_by_id_for_user(
+    db: Session, message_id: int, user_id: int
+) -> Optional[ChatMessage]:
+    """根据消息 ID 获取消息（同时验证会话所有权）。
+
+    先通过 JOIN 验证消息所属会话属于当前用户，再返回消息。
+
+    Parameters
+    ----------
+    db : Session
+    message_id : int
+    user_id : int
+
+    Returns
+    -------
+    Optional[ChatMessage]
+        None 表示消息不存在或会话不属于该用户
+    """
+    return (
+        db.query(ChatMessage)
+        .join(ChatSession, ChatMessage.session_id == ChatSession.id)
+        .filter(
+            ChatMessage.id == message_id,
+            ChatSession.user_id == user_id,
+        )
+        .first()
+    )
+
+
 def create_message(
     db: Session, session_id: int, role: str, content: str,
     is_test: bool = False,
 ) -> ChatMessage:
-    """创建消息。
+    """创建消息（调用方必须先验证会话所有权）。
 
     Parameters
     ----------
@@ -254,3 +311,65 @@ def create_message(
     db.add(message)
     db.flush()
     return message
+
+
+def delete_message_for_user(
+    db: Session, message_id: int, user_id: int
+) -> bool:
+    """删除消息（验证会话所有权）。
+
+    Parameters
+    ----------
+    db : Session
+    message_id : int
+    user_id : int
+
+    Returns
+    -------
+    bool
+        True 表示删除成功，False 表示消息不存在或无权限
+    """
+    message = get_message_by_id_for_user(db, message_id, user_id)
+    if message is None:
+        return False
+    db.delete(message)
+    db.flush()
+    return True
+
+
+def clear_session_messages_for_user(
+    db: Session, session_id: int, user_id: int
+) -> Optional[int]:
+    """清空会话的所有消息（验证会话所有权）。
+
+    Parameters
+    ----------
+    db : Session
+    session_id : int
+    user_id : int
+
+    Returns
+    -------
+    Optional[int]
+        删除的消息数量，None 表示会话不存在或无权限
+    """
+    session = get_session_by_id(db, session_id, user_id)
+    if session is None:
+        return None
+
+    count = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session_id)
+        .count()
+    )
+
+    (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session_id)
+        .delete(synchronize_session="fetch")
+    )
+
+    # 更新会话时间
+    session.updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return count

@@ -242,9 +242,70 @@ class SendMessageResponse(BaseModel):
     assistant_message: MessageResponse = Field(..., description="助手消息")
 
 
+class UpdateSessionTitleRequest(BaseModel):
+    """更新会话标题请求。"""
+
+    title: str = Field(
+        ...,
+        description="新标题",
+        min_length=1,
+        max_length=255,
+    )
+
+
+class UpdateSessionTitleResponse(BaseModel):
+    """更新会话标题响应。"""
+
+    success: bool = Field(default=True, description="请求是否成功")
+    message: str = Field(default="会话标题已更新", description="操作结果信息")
+    session_id: int = Field(..., description="会话 ID")
+    title: str = Field(..., description="新标题")
+
+
 class DeleteSessionResponse(BaseModel):
     """删除会话响应。"""
 
     success: bool = Field(default=True, description="请求是否成功")
     message: str = Field(..., description="操作结果信息")
     session_id: int = Field(..., description="被删除的会话 ID")
+
+
+class ClearSessionResponse(BaseModel):
+    """清空会话消息响应。"""
+
+    success: bool = Field(default=True, description="请求是否成功")
+    message: str = Field(..., description="操作结果信息")
+    session_id: int = Field(..., description="会话 ID")
+    deleted_count: int = Field(default=0, description="删除的消息数量")
+
+
+class DeleteMessageResponse(BaseModel):
+    """删除消息响应。"""
+
+    success: bool = Field(default=True, description="请求是否成功")
+    message: str = Field(..., description="操作结果信息")
+    message_id: int = Field(..., description="被删除的消息 ID")
+
+
+class MessageFeedbackRequest(BaseModel):
+    """消息反馈请求。"""
+
+    rating: str = Field(
+        ...,
+        description="评分: like / dislike",
+        pattern=r"^(like|dislike)$",
+    )
+    comment: str | None = Field(
+        default=None,
+        description="反馈备注",
+        max_length=1000,
+    )
+
+
+class MessageFeedbackResponse(BaseModel):
+    """消息反馈响应。"""
+
+    success: bool = Field(default=True, description="请求是否成功")
+    message: str = Field(default="反馈已提交", description="操作结果信息")
+    message_id: int = Field(..., description="消息 ID")
+    rating: str = Field(..., description="评分")

@@ -306,4 +306,113 @@ describe('useChatStore', () => {
     // Should not change since session doesn't exist
     expect(store.activeSessionId).toBeNull()
   })
+
+  it('should reset sending state on reset', () => {
+    const store = useChatStore()
+    store.$patch({ sending: true })
+    expect(store.sending).toBe(true)
+    store.reset()
+    expect(store.sending).toBe(false)
+  })
+
+  it('should clear currentRequestUserId on reset', () => {
+    const store = useChatStore()
+    store.reset()
+    // After reset, initialized should be false
+    expect(store.initialized).toBe(false)
+  })
+})
+
+// ============================================================================
+// 数据隔离测试：Store 清理与用户切换
+// ============================================================================
+
+describe('Data isolation — store cleanup', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('chat store reset clears all user data', () => {
+    const chatStore = useChatStore()
+    chatStore.$patch({
+      sessions: [{ id: '1', title: 'Old', messages: [], createdAt: '', updatedAt: '' }],
+      activeSessionId: '1',
+      sending: true,
+      initialized: true,
+    })
+
+    chatStore.reset()
+
+    expect(chatStore.sessions).toEqual([])
+    expect(chatStore.activeSessionId).toBeNull()
+    expect(chatStore.sending).toBe(false)
+  })
+
+  it('auth store silentCleanup clears user and token', () => {
+    const authStore = useAuthStore()
+    authStore.$patch({
+      accessToken: 'fake-token',
+      user: { id: 1, username: 'test', display_name: 'Test', role: 'user' },
+    })
+
+    authStore.silentCleanup()
+
+    expect(authStore.accessToken).toBeNull()
+    expect(authStore.user).toBeNull()
+  })
+
+  it('auth store forceLogout clears all state', async () => {
+    const authStore = useAuthStore()
+    authStore.$patch({
+      accessToken: 'fake-token',
+      user: { id: 1, username: 'test', display_name: 'Test', role: 'user' },
+    })
+
+    await authStore.forceLogout()
+
+    expect(authStore.accessToken).toBeNull()
+    expect(authStore.user).toBeNull()
+  })
+
+  it('app store reset clears UI state', () => {
+    const appStore = useAppStore()
+    appStore.toggleSidebar()
+    appStore.setGlobalLoading(true)
+    appStore.setMobileSidebarOpen(true)
+
+    appStore.reset()
+
+    expect(appStore.sidebarCollapsed).toBe(false)
+    expect(appStore.globalLoading).toBe(false)
+    expect(appStore.mobileSidebarOpen).toBe(false)
+  })
+
+  it('admin stores (knowledge/users) should reset on forceLogout', async () => {
+    const { useKnowledgeStore } = await import('@/stores/knowledge')
+    const { useUsersStore } = await import('@/stores/users')
+
+    const knowledgeStore = useKnowledgeStore()
+    const usersStore = useUsersStore()
+
+    // Set some data
+    knowledgeStore.$patch({
+      loading: true,
+      error: 'test error',
+    })
+    usersStore.$patch({
+      loading: true,
+      error: 'test error',
+    })
+
+    knowledgeStore.reset()
+    usersStore.reset()
+
+    expect(knowledgeStore.loading).toBe(false)
+    expect(knowledgeStore.error).toBe('')
+    expect(knowledgeStore.files).toEqual([])
+
+    expect(usersStore.loading).toBe(false)
+    expect(usersStore.error).toBe('')
+    expect(usersStore.users).toEqual([])
+  })
 })

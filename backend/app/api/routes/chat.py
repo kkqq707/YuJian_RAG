@@ -23,12 +23,16 @@ from backend.app.repositories import chat_repository
 from backend.app.schemas.chat import (
     AdminChatResponse,
     ChatRequest,
+    ClearSessionResponse,
     CreateSessionRequest,
     CreateSessionResponse,
     DebugConfig,
     DebugInfo,
     DebugResultItem,
+    DeleteMessageResponse,
     DeleteSessionResponse,
+    MessageFeedbackRequest,
+    MessageFeedbackResponse,
     MessageListResponse,
     MessageResponse,
     SendMessageRequest,
@@ -36,6 +40,8 @@ from backend.app.schemas.chat import (
     SessionListResponse,
     SessionResponse,
     SourceItem,
+    UpdateSessionTitleRequest,
+    UpdateSessionTitleResponse,
     UserChatResponse,
 )
 from backend.app.security.dependencies import get_current_active_user, require_admin, require_normal_user
@@ -461,6 +467,160 @@ async def delete_session_handler(
         success=True,
         message="会话已删除",
         session_id=session_id,
+    )
+
+
+@router.put("/chat/sessions/{session_id}/title", response_model=UpdateSessionTitleResponse)
+async def update_session_title_handler(
+    session_id: int,
+    body: UpdateSessionTitleRequest,
+    current_user: User = Depends(require_normal_user),
+    db: Session = Depends(get_db),
+):
+    """更新会话标题。
+
+    只能修改自己的会话标题。
+    """
+    session = chat_repository.update_session_title(
+        db, session_id, current_user.id, body.title
+    )
+
+    if session is None:
+        raise HTTPException(
+            status_code=404,
+            detail="会话不存在或无权访问",
+        )
+
+    logger.info(
+        "update_session_title | user=%s | session_id=%d | title=%s",
+        current_user.username,
+        session_id,
+        body.title,
+    )
+
+    return UpdateSessionTitleResponse(
+        success=True,
+        message="会话标题已更新",
+        session_id=session_id,
+        title=session.title,
+    )
+
+
+@router.delete("/chat/sessions/{session_id}/messages", response_model=ClearSessionResponse)
+async def clear_session_messages_handler(
+    session_id: int,
+    current_user: User = Depends(require_normal_user),
+    db: Session = Depends(get_db),
+):
+    """清空指定会话的所有消息。
+
+    只能清空自己的会话消息，会话本身保留。
+    """
+    deleted_count = chat_repository.clear_session_messages_for_user(
+        db, session_id, current_user.id
+    )
+
+    if deleted_count is None:
+        raise HTTPException(
+            status_code=404,
+            detail="会话不存在或无权访问",
+        )
+
+    logger.info(
+        "clear_session_messages | user=%s | session_id=%d | deleted=%d",
+        current_user.username,
+        session_id,
+        deleted_count,
+    )
+
+    return ClearSessionResponse(
+        success=True,
+        message=f"已清空 {deleted_count} 条消息",
+        session_id=session_id,
+        deleted_count=deleted_count,
+    )
+
+
+@router.delete("/chat/messages/{message_id}", response_model=DeleteMessageResponse)
+async def delete_message_handler(
+    message_id: int,
+    current_user: User = Depends(require_normal_user),
+    db: Session = Depends(get_db),
+):
+    """删除指定消息。
+
+    只能删除自己会话中的消息（通过 JOIN 验证会话所有权）。
+    """
+    deleted = chat_repository.delete_message_for_user(
+        db, message_id, current_user.id
+    )
+
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail="消息不存在或无权访问",
+        )
+
+    logger.info(
+        "delete_message | user=%s | message_id=%d",
+        current_user.username,
+        message_id,
+    )
+
+    return DeleteMessageResponse(
+        success=True,
+        message="消息已删除",
+        message_id=message_id,
+    )
+
+
+@router.post("/chat/messages/{message_id}/feedback", response_model=MessageFeedbackResponse)
+async def submit_message_feedback(
+    message_id: int,
+    body: MessageFeedbackRequest,
+    current_user: User = Depends(require_normal_user),
+    db: Session = Depends(get_db),
+):
+    """提交消息反馈（点赞/点踩）。
+
+    只能对自己会话中的消息提交反馈。
+    反馈记录保存在消息记录中（通过 content 扩展存储）。
+    """
+    message = chat_repository.get_message_by_id_for_user(
+        db, message_id, current_user.id
+    )
+
+    if message is None:
+        raise HTTPException(
+            status_code=404,
+            detail="消息不存在或无权访问",
+        )
+
+    # 将反馈信息追加到消息内容末尾（作为元数据标记）
+    # 实际产品中可以创建独立的 feedback 表，这里保持简单
+    feedback_tag = f"\n<!-- feedback: rating={body.rating}"
+    if body.comment:
+        feedback_tag += f", comment={body.comment}"
+    feedback_tag += " -->"
+
+    # 移除旧反馈标记（如果存在）
+    import re
+    cleaned = re.sub(r"\n<!-- feedback:.*?-->", "", message.content)
+    message.content = cleaned + feedback_tag
+    db.flush()
+
+    logger.info(
+        "message_feedback | user=%s | message_id=%d | rating=%s",
+        current_user.username,
+        message_id,
+        body.rating,
+    )
+
+    return MessageFeedbackResponse(
+        success=True,
+        message="反馈已提交",
+        message_id=message_id,
+        rating=body.rating,
     )
 
 
