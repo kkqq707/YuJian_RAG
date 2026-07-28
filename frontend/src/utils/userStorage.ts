@@ -16,9 +16,12 @@ const NAMESPACE = 'yujian'
 
 // ---- 全局存储 key（非用户专属） ----
 // 这些 key 不包含 user ID，所有用户共享
+// USER_INFO / TOKEN 必须使用全局固定 key，否则应用首次启动无法恢复登录状态
 export const GLOBAL_KEYS = {
   REMEMBERED_USERNAME: 'remembered_username',
   STORAGE_MIGRATION_VERSION: `${NAMESPACE}:storage_migration_version`,
+  /** 用户信息（sessionStorage）— 必须全局固定，含 userId 自身，不能依赖 userId 才能读取 */
+  USER_INFO: `${NAMESPACE}:user_info`,
 } as const
 
 // ---- 旧的共享 key（需要迁移/清理） ----
@@ -55,8 +58,20 @@ function getCurrentUserId(): number | null {
     // 解析器返回 null/undefined 时继续尝试降级方案
   }
 
-  // 降级：扫描 sessionStorage 查找用户信息
-  // 用户信息 key 格式: yujian:{userId}:user_info
+  // 降级 1：从全局 user_info key 中解析 userId
+  try {
+    const raw = sessionStorage.getItem(GLOBAL_KEYS.USER_INFO)
+    if (raw) {
+      const parsed = JSON.parse(raw) as { id?: number }
+      if (parsed.id && typeof parsed.id === 'number' && parsed.id > 0) {
+        return parsed.id
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 降级 2：扫描 sessionStorage 查找旧格式 key: yujian:{userId}:user_info
   try {
     const prefix = `${NAMESPACE}:`
     const suffix = ':user_info'
@@ -67,7 +82,6 @@ function getCurrentUserId(): number | null {
         key.startsWith(prefix) &&
         key.endsWith(suffix)
       ) {
-        // 从 key 中提取 userId: yujian:{userId}:user_info
         const idStr = key.slice(prefix.length, key.length - suffix.length)
         const id = parseInt(idStr, 10)
         if (!isNaN(id) && id > 0) {
@@ -96,6 +110,21 @@ export function buildUserStorageKey(
   return `${NAMESPACE}:${id}:${baseKey}`
 }
 
+/**
+ * 安全构建用户存储 key — 无法确定 userId 时返回 null 而非抛出异常。
+ *
+ * 用于读取场景：未登录时安全返回 null，由调用方返回 fallback 值，
+ * 而不是让整个 Vue 应用抛异常白屏。
+ */
+export function buildUserStorageKeySafe(
+  baseKey: string,
+  userId?: number | null,
+): string | null {
+  const id = userId ?? getCurrentUserId()
+  if (id === null || id === undefined) return null
+  return `${NAMESPACE}:${id}:${baseKey}`
+}
+
 // ---- 读写 ----
 
 export function getUserStorage<T>(
@@ -104,7 +133,9 @@ export function getUserStorage<T>(
   userId?: number | null,
 ): T {
   try {
-    const raw = localStorage.getItem(buildUserStorageKey(baseKey, userId))
+    const key = buildUserStorageKeySafe(baseKey, userId)
+    if (key === null) return fallback
+    const raw = localStorage.getItem(key)
     if (raw === null) return fallback
     return JSON.parse(raw) as T
   } catch {
@@ -162,7 +193,9 @@ export function getUserSessionStorage<T>(
   userId?: number | null,
 ): T {
   try {
-    const raw = sessionStorage.getItem(buildUserStorageKey(baseKey, userId))
+    const key = buildUserStorageKeySafe(baseKey, userId)
+    if (key === null) return fallback
+    const raw = sessionStorage.getItem(key)
     if (raw === null) return fallback
     return JSON.parse(raw) as T
   } catch {
