@@ -58,18 +58,6 @@
         </el-tooltip>
       </div>
 
-      <!-- 管理员后台入口 -->
-      <div
-        v-if="authStore.isAdmin"
-        class="user-sidebar__admin-entry"
-        :class="{ 'user-sidebar__admin-entry--collapsed': sidebarCollapsed && !isMobile }"
-      >
-        <router-link to="/admin/dashboard" class="admin-entry-link">
-          <Shield :size="18" />
-          <span v-if="!sidebarCollapsed || isMobile">管理后台</span>
-        </router-link>
-      </div>
-
       <!-- 底部用户区 -->
       <div class="user-sidebar__footer">
         <router-link to="/profile" class="user-footer-link">
@@ -118,7 +106,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { useChatStore } from '@/stores/chat'
 import { storeToRefs } from 'pinia'
-import { Sparkles, Plus, LogOut, PanelLeftClose, PanelLeftOpen, Shield } from '@lucide/vue'
+import { Sparkles, Plus, LogOut, PanelLeftClose, PanelLeftOpen } from '@lucide/vue'
 import SessionList from '@/components/chat/SessionList.vue'
 
 const router = useRouter()

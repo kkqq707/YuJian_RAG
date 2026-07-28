@@ -59,10 +59,8 @@ export const usePermissionStore = defineStore('permission', () => {
         '/admin/system',
         '/admin/settings',
         '/admin/profile',
-        '/chat',
-        '/history',
-        '/profile',
       ]
+      // 管理员禁止访问普通用户业务页面: /chat, /history, /profile
     }
     return ['/chat', '/history', '/profile']
   })

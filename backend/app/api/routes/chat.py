@@ -38,7 +38,7 @@ from backend.app.schemas.chat import (
     SourceItem,
     UserChatResponse,
 )
-from backend.app.security.dependencies import get_current_active_user, require_admin
+from backend.app.security.dependencies import get_current_active_user, require_admin, require_normal_user
 from backend.app.services.rag_adapter import get_rag_adapter
 
 logger = logging.getLogger(__name__)
@@ -50,12 +50,12 @@ router = APIRouter(tags=["问答"])
 async def chat(
     request: Request,
     body: ChatRequest,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_normal_user),
     db: Session = Depends(get_db),
 ):
     """普通用户问答 — 不返回 sources / chunk_id / raw_distance / relevance_score。
 
-    需要登录，admin 和 user 角色均可访问。
+    需要普通用户权限，管理员禁止访问。
     知识库外问题保持原有拒答逻辑。
     LLM 使用普通用户 Prompt（隐藏来源、简洁回答 300-500 字）。
 
@@ -204,7 +204,7 @@ async def admin_chat_preview(
 async def list_sessions(
     page: int = 1,
     page_size: int = 20,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_normal_user),
     db: Session = Depends(get_db),
 ):
     """获取当前用户的聊天会话（分页）。
@@ -240,7 +240,7 @@ async def list_sessions(
 @router.post("/chat/sessions", response_model=CreateSessionResponse)
 async def create_session_handler(
     body: CreateSessionRequest,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_normal_user),
     db: Session = Depends(get_db),
 ):
     """创建新的聊天会话。
@@ -266,7 +266,7 @@ async def create_session_handler(
 @router.get("/chat/sessions/{session_id}/messages", response_model=MessageListResponse)
 async def get_session_messages_handler(
     session_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_normal_user),
     db: Session = Depends(get_db),
 ):
     """获取指定会话的所有消息。
@@ -305,7 +305,7 @@ async def get_session_messages_handler(
 async def send_message(
     request: Request,
     body: SendMessageRequest,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_normal_user),
     db: Session = Depends(get_db),
 ):
     """发送消息并保存到数据库。
@@ -436,7 +436,7 @@ async def send_message(
 @router.delete("/chat/sessions/{session_id}", response_model=DeleteSessionResponse)
 async def delete_session_handler(
     session_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_normal_user),
     db: Session = Depends(get_db),
 ):
     """删除指定会话及其所有消息。

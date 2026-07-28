@@ -45,7 +45,11 @@ export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(null)
   const user = ref<StoredUser | null>(null)
   const initialized = ref(false)
+  const sessionRestored = ref(false)
   const loading = ref(false)
+
+  /** 防止多个并发导航同时触发 restoreSession */
+  let restorePromise: Promise<void> | null = null
 
   // ---- Getters ----
   // 已认证 = 有用户信息 + (有 accessToken 或 有 refreshToken 可恢复)
@@ -136,31 +140,46 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** 恢复会话（页面刷新时调用） */
+  /** 恢复会话（页面刷新时调用）— 支持并发去重 */
   async function restoreSession(): Promise<void> {
-    if (initialized.value) return
+    // 已恢复过，直接返回
+    if (sessionRestored.value) return
 
-    const storedUser = getStoredUser()
-    const storedRefresh = getRefreshToken()
-
-    if (storedUser && storedRefresh) {
-      // 从 sessionStorage 恢复用户信息
-      user.value = storedUser
-      setRequestOwnerId(storedUser.id)
-
-      // 主动刷新 accessToken，避免首次 API 请求触发 401
-      try {
-        await refreshToken()
-      } catch {
-        // 刷新失败（如 refresh token 过期），清除状态让用户重新登录
-        user.value = null
-        setRequestOwnerId(null)
-        clearAuthTokens()
-        clearStoredUser()
-      }
+    // 正在恢复中，复用同一个 Promise
+    if (restorePromise) {
+      await restorePromise
+      return
     }
 
-    initialized.value = true
+    restorePromise = (async () => {
+      try {
+        const storedUser = getStoredUser()
+        const storedRefresh = getRefreshToken()
+
+        if (storedUser && storedRefresh) {
+          // 从 sessionStorage 恢复用户信息
+          user.value = storedUser
+          setRequestOwnerId(storedUser.id)
+
+          // 主动刷新 accessToken，避免首次 API 请求触发 401
+          try {
+            await refreshToken()
+          } catch {
+            // 刷新失败（如 refresh token 过期），清除状态让用户重新登录
+            user.value = null
+            setRequestOwnerId(null)
+            clearAuthTokens()
+            clearStoredUser()
+          }
+        }
+      } finally {
+        sessionRestored.value = true
+        initialized.value = true
+        restorePromise = null
+      }
+    })()
+
+    await restorePromise
   }
 
   /** 从 axios 拦截器同步 accessToken 到 Pinia store（401 刷新成功后调用） */
@@ -218,6 +237,10 @@ export const useAuthStore = defineStore('auth', () => {
   function silentCleanup(): void {
     const previousUserId = user.value?.id ?? null
 
+    // 重置恢复状态
+    sessionRestored.value = false
+    restorePromise = null
+
     accessToken.value = null
     user.value = null
     setAxiosToken(null)
@@ -248,6 +271,10 @@ export const useAuthStore = defineStore('auth', () => {
    * 5. 取消竞态防护
    */
   async function performFullCleanup(previousUserId: number | null): Promise<void> {
+    // 重置恢复状态
+    sessionRestored.value = false
+    restorePromise = null
+
     // Step 1: 清除认证状态
     accessToken.value = null
     user.value = null
@@ -273,6 +300,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken,
     user,
     initialized,
+    sessionRestored,
     loading,
     // Getters
     isAuthenticated,

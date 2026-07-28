@@ -142,3 +142,19 @@ def require_role(*roles: str):
         return current_user
 
     return _check_role
+
+
+def require_normal_user(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """要求普通用户权限 — 管理员禁止使用用户端对话功能。
+
+    管理员调用聊天接口返回 403。
+    普通用户正常通过。
+    """
+    if current_user.role == "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="管理员账号不可使用用户端对话功能",
+        )
+    return current_user

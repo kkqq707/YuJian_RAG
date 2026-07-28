@@ -51,6 +51,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { extractLoginErrorMessage } from '@/utils/error'
+import { resolvePostLoginRedirect, getDefaultRouteByRole } from '@/router/routes'
 import axios from 'axios'
 import AiBackground from '@/components/login/AiBackground.vue'
 import AiParticleBackground from '@/components/login/AiParticleBackground.vue'
@@ -113,12 +114,13 @@ async function handleLogin(): Promise<void> {
       localStorage.removeItem('remembered_username')
     }
 
-    const redirect = (route.query.redirect as string) || ''
-    if (authStore.isAdmin) {
-      router.push(redirect || '/admin/dashboard')
-    } else {
-      router.push(redirect || '/chat')
-    }
+    // 按角色验证 redirect 参数
+    const rawRedirect = route.query.redirect as string | undefined
+    const isAdmin = authStore.isAdmin
+    const validRedirect = resolvePostLoginRedirect(rawRedirect, isAdmin)
+    const target = validRedirect || getDefaultRouteByRole(isAdmin)
+    // 使用 replace 避免浏览器返回键回到登录页
+    await router.replace(target)
   } catch (err: unknown) {
     errorMessage.value = extractLoginErrorMessage(err)
   } finally {
