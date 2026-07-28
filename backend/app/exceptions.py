@@ -152,6 +152,79 @@ def register_exception_handlers(app):
             request_id=request_id,
         )
 
+    # ---- Phase 6: 推理异常处理器 ----
+    try:
+        from backend.app.services.inference_runtime import (
+            InferenceQueueTimeoutError,
+            InferenceExecutionTimeoutError,
+            InferenceUnavailableError,
+            UserRequestLimitError,
+        )
+
+        @app.exception_handler(InferenceQueueTimeoutError)
+        async def inference_queue_timeout_handler(
+            request: Request, exc: InferenceQueueTimeoutError,
+        ) -> JSONResponse:
+            request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+            logger.warning(
+                "推理排队超时 | request_id=%s resource=%s waited_ms=%.0f",
+                request_id, exc.resource, exc.waited_ms,
+            )
+            return _build_error_response(
+                code="INFERENCE_QUEUE_TIMEOUT",
+                message="当前问答请求较多，请稍后重试",
+                status_code=503,
+                request_id=request_id,
+            )
+
+        @app.exception_handler(InferenceExecutionTimeoutError)
+        async def inference_execution_timeout_handler(
+            request: Request, exc: InferenceExecutionTimeoutError,
+        ) -> JSONResponse:
+            request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+            logger.warning(
+                "推理执行超时 | request_id=%s resource=%s elapsed_ms=%.0f",
+                request_id, exc.resource, exc.elapsed_ms,
+            )
+            return _build_error_response(
+                code="INFERENCE_EXECUTION_TIMEOUT",
+                message="本次处理超时，请缩短问题或稍后重试",
+                status_code=504,
+                request_id=request_id,
+            )
+
+        @app.exception_handler(InferenceUnavailableError)
+        async def inference_unavailable_handler(
+            request: Request, exc: InferenceUnavailableError,
+        ) -> JSONResponse:
+            request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+            logger.error(
+                "推理服务不可用 | request_id=%s resource=%s detail=%s",
+                request_id, exc.resource, exc.detail,
+            )
+            return _build_error_response(
+                code="INFERENCE_UNAVAILABLE",
+                message="模型服务暂不可用，请稍后重试或联系管理员",
+                status_code=503,
+                request_id=request_id,
+            )
+
+        @app.exception_handler(UserRequestLimitError)
+        async def user_request_limit_handler(
+            request: Request, exc: UserRequestLimitError,
+        ) -> JSONResponse:
+            request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+            logger.info("用户请求超限 | request_id=%s", request_id)
+            return _build_error_response(
+                code="USER_REQUEST_LIMIT",
+                message="当前已有回答正在生成，请稍候。",
+                status_code=429,
+                request_id=request_id,
+            )
+
+    except ImportError:
+        pass  # InferenceRuntime 模块尚未加载时跳过
+
     @app.exception_handler(Exception)
     async def generic_exception_handler(
         request: Request, exc: Exception

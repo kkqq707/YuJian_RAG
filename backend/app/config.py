@@ -85,12 +85,66 @@ class Settings(BaseSettings):
     # ---- 限制 ----
     MAX_QUESTION_LENGTH: int = 2000
 
+    # ---- 推理并发控制 (Phase 6) ----
+    EMBEDDING_MAX_CONCURRENCY: int = 2
+    RERANKER_MAX_CONCURRENCY: int = 1
+    INFERENCE_QUEUE_TIMEOUT_SECONDS: int = 30
+    INFERENCE_TASK_TIMEOUT_SECONDS: int = 120
+    INFERENCE_THREAD_POOL_SIZE: int = 2
+
+    # ---- LLM HTTP 客户端 ----
+    LLM_CONNECT_TIMEOUT_SECONDS: int = 10
+    LLM_READ_TIMEOUT_SECONDS: int = 120
+    LLM_WRITE_TIMEOUT_SECONDS: int = 30
+    LLM_POOL_TIMEOUT_SECONDS: int = 10
+    LLM_MAX_CONNECTIONS: int = 20
+    LLM_MAX_KEEPALIVE_CONNECTIONS: int = 10
+
+    # ---- 用户级并发 ----
+    MAX_ACTIVE_RAG_REQUESTS_PER_USER: int = 1
+
+    # ---- Uvicorn ----
+    UVICORN_WORKERS: int = 1
+    UVICORN_LIMIT_CONCURRENCY: int = 50
+    UVICORN_BACKLOG: int = 128
+    UVICORN_TIMEOUT_KEEP_ALIVE: int = 10
+
     # ---- 日志目录 ----
     @property
     def LOG_DIR(self) -> Path:
         return _PROJECT_ROOT / "storage" / "logs"
 
     # ---- 校验 ----
+
+    @field_validator(
+        "EMBEDDING_MAX_CONCURRENCY",
+        "RERANKER_MAX_CONCURRENCY",
+        "INFERENCE_THREAD_POOL_SIZE",
+        "MAX_ACTIVE_RAG_REQUESTS_PER_USER",
+        mode="after",
+    )
+    @classmethod
+    def validate_positive_int(cls, v: int) -> int:
+        """确保并发/线程池值 >= 1。"""
+        if v < 1:
+            raise ValueError(f"值必须 >= 1，当前值: {v}")
+        return v
+
+    @field_validator(
+        "INFERENCE_QUEUE_TIMEOUT_SECONDS",
+        "INFERENCE_TASK_TIMEOUT_SECONDS",
+        "LLM_CONNECT_TIMEOUT_SECONDS",
+        "LLM_READ_TIMEOUT_SECONDS",
+        "LLM_WRITE_TIMEOUT_SECONDS",
+        "LLM_POOL_TIMEOUT_SECONDS",
+        mode="after",
+    )
+    @classmethod
+    def validate_non_negative_timeout(cls, v: int) -> int:
+        """确保超时值 >= 0。"""
+        if v < 0:
+            raise ValueError(f"超时值不得为负数，当前值: {v}")
+        return v
 
     @field_validator("JWT_SECRET_KEY", mode="after")
     @classmethod

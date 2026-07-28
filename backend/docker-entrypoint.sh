@@ -188,5 +188,32 @@ echo ""
 
 # ---- 5. 启动 FastAPI ----
 echo "[3/3] 启动 FastAPI 服务..."
+
+# Phase 6: Uvicorn 并发配置
+UVICORN_WORKERS="${UVICORN_WORKERS:-1}"
+UVICORN_LIMIT_CONCURRENCY="${UVICORN_LIMIT_CONCURRENCY:-50}"
+UVICORN_BACKLOG="${UVICORN_BACKLOG:-128}"
+UVICORN_TIMEOUT_KEEP_ALIVE="${UVICORN_TIMEOUT_KEEP_ALIVE:-10}"
+
+echo "  Uvicorn Workers:     ${UVICORN_WORKERS}"
+echo "  Limit Concurrency:   ${UVICORN_LIMIT_CONCURRENCY}"
+echo "  Backlog:             ${UVICORN_BACKLOG}"
+echo "  Timeout Keep-Alive:  ${UVICORN_TIMEOUT_KEEP_ALIVE}s"
+
+if [ "$UVICORN_WORKERS" -gt 1 ]; then
+    echo ""
+    echo "  ⚠ WARNING: UVICORN_WORKERS=${UVICORN_WORKERS} > 1"
+    echo "  每个 worker 会重复加载 Embedding 和 Reranker 模型"
+    echo "  当前服务器 2核4GB 可能内存不足"
+    echo "  建议保持 UVICORN_WORKERS=1（默认值）"
+    echo ""
+fi
+
 echo ""
-exec uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+exec uvicorn backend.app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers "${UVICORN_WORKERS}" \
+    --limit-concurrency "${UVICORN_LIMIT_CONCURRENCY}" \
+    --backlog "${UVICORN_BACKLOG}" \
+    --timeout-keep-alive "${UVICORN_TIMEOUT_KEEP_ALIVE}"

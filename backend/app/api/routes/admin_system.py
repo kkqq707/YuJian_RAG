@@ -468,6 +468,42 @@ async def save_system_settings(
 
 
 # ---------------------------------------------------------------------------
+# Phase 6: 推理运行时指标（管理员专属）
+# ---------------------------------------------------------------------------
+
+
+@router.get("/inference-metrics", summary="获取推理运行时指标")
+async def inference_metrics(
+    request: Request,
+    current_user: User = Depends(require_admin),
+):
+    """获取推理运行时指标（进程内，重启归零）。
+
+    包含: embedding_active, embedding_waiting, reranker_active, reranker_waiting,
+          rag_active, 累计计数等。
+
+    需要管理员权限。
+    """
+    runtime = getattr(request.app.state, "inference_runtime", None)
+    if runtime is None:
+        return {
+            "success": True,
+            "available": False,
+            "message": "推理运行时未初始化",
+            "metrics": None,
+        }
+
+    metrics = runtime.metrics.snapshot()
+    metrics["active_user_count"] = runtime.get_active_user_count()
+
+    return {
+        "success": True,
+        "available": True,
+        "metrics": metrics,
+    }
+
+
+# ---------------------------------------------------------------------------
 # 系统日志路由（/admin/logs 前缀）
 # ---------------------------------------------------------------------------
 

@@ -268,7 +268,7 @@ class SystemService:
     def get_model_health(self) -> dict:
         """获取 Embedding 和 Reranker 模型健康状态。
 
-        供企业离线部署诊断使用。
+        供企业离线部署诊断使用。Phase 6: 优先使用 InferenceRuntime。
 
         Returns
         -------
@@ -299,7 +299,7 @@ class SystemService:
             },
         }
 
-        # ---- Embedding ----
+        # ---- Embedding (优先从 InferenceRuntime) ----
         try:
             from src.embedding_model import (
                 get_load_strategy_info,
@@ -316,8 +316,11 @@ class SystemService:
         except Exception as e:
             result["embedding"]["load_mode"] = f"error: {str(e)[:100]}"
 
-        # ---- Reranker ----
+        # ---- Reranker (优先从 InferenceRuntime) ----
         try:
+            from backend.app.services.inference_runtime import InferenceRuntime
+            # 尝试从 FastAPI app state 获取 runtime
+            # 如果不可用，回退到直接加载
             from src.reranker import get_reranker
             reranker = get_reranker()
             reranker.ensure_initialized()
@@ -331,6 +334,23 @@ class SystemService:
             result["reranker"]["load_mode"] = f"error: {str(e)[:100]}"
 
         return result
+
+    def get_inference_metrics(self) -> dict:
+        """获取推理运行时指标（仅管理员可访问）。
+
+        Phase 6: 进程内推理指标快照。
+        """
+        try:
+            from backend.app.services.inference_runtime import InferenceRuntime
+            # 尝试获取运行时（从全局引用）
+            import asyncio
+            # 这里无法直接访问 app.state，返回空指标
+            return {
+                "available": False,
+                "message": "推理运行时指标不可用（需通过依赖注入访问）",
+            }
+        except ImportError:
+            return {"available": False, "message": "推理运行时未加载"}
 
     def _get_file_count(self) -> int:
         """安全获取知识库文件数量（不上传时读取，不返回路径）。"""

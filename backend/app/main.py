@@ -4,7 +4,7 @@
 - 不在此处重建向量库
 - 不在此处下载 Embedding
 - 不在此处读取全部知识库
-- RAGService 只在首次聊天请求时延迟初始化
+- 推理资源通过 InferenceRuntime 统一管理 (Phase 6)
 """
 
 from __future__ import annotations
@@ -61,13 +61,13 @@ setup_logging()
 async def lifespan(app: FastAPI):
     """应用生命周期管理。
 
-    启动时预加载 Embedding 模型、Chroma 连接、LLM 配置缓存，
+    启动时加载推理运行时（Embedding、Reranker、Semaphore、Executor、HTTP Client），
     避免首次用户请求时等待。
 
     启动流程:
-    1. 读取数据库 → 检查知识库状态
+    1. 创建 InferenceRuntime → 加载模型 + 并发控制
     2. 连接 Chroma → 恢复 collection → 加载已有索引
-    3. 预加载 Embedding 模型
+    3. 读取数据库 → 检查知识库状态
     4. 验证 LLM 配置
     5. 数据库-Chroma 一致性检查
 
@@ -86,38 +86,31 @@ async def lifespan(app: FastAPI):
     logger.info("  RAG 初始化开始")
     logger.info("=" * 60)
 
-    # ---- 1. Embedding 模型 ----
-    logger.info("Embedding:")
-    emb_ok = False
+    # ---- 1. 推理运行时（Embedding + Reranker + 并发控制） ----
+    from backend.app.services.inference_runtime import (
+        InferenceRuntime,
+        create_inference_runtime,
+    )
+    runtime = create_inference_runtime()
+    app.state.inference_runtime = runtime
+
+    emb_ok = runtime.embedding_available
     emb_name = ""
     emb_path = ""
     try:
         import sys
-        from pathlib import Path
         settings = get_settings()
         project_root = settings.PROJECT_ROOT
         if str(project_root) not in sys.path:
             sys.path.insert(0, str(project_root))
-
-        from src.embedding_model import get_embedding_model, get_load_strategy_info, is_model_available_locally
-
+        from src.embedding_model import get_load_strategy_info
         strategy_info = get_load_strategy_info()
         emb_name = strategy_info.get("model_name", "")
         emb_path_display = strategy_info.get("model_path", "")
         if emb_path_display and emb_path_display != "<未配置>":
             emb_path = emb_path_display
-        logger.info("  模型:     %s", emb_name)
-        logger.info("  加载方式: %s", strategy_info.get("load_method", ""))
-        if emb_path:
-            logger.info("  路径:     %s", emb_path)
-
-        emb_start = time.perf_counter()
-        embedding = get_embedding_model()
-        emb_elapsed = round(time.perf_counter() - emb_start, 2)
-        emb_ok = True
-        logger.info("  状态:     [OK] 已加载 (%.2fs)", emb_elapsed)
-    except Exception as e:
-        logger.warning("  状态:     [WARN] 预加载失败（首次请求时将重试）: %s", str(e).split(chr(10))[0][:150])
+    except Exception:
+        pass
 
     # 启动日志：Embedding 摘要
     print(f"Embedding:")
@@ -130,19 +123,17 @@ async def lifespan(app: FastAPI):
     chroma_collection = ""
     chroma_vectors = 0
     try:
-        from src.vector_store import get_chroma_client, vector_store_exists
+        from src.vector_store import get_chroma_client
         from src.config import COLLECTION_NAME
 
         chroma_start = time.perf_counter()
         client = get_chroma_client()
         chroma_elapsed = round(time.perf_counter() - chroma_start, 2)
 
-        # 自动创建 collection（如果不存在），避免后续 get_collection 失败
         try:
             collection = client.get_collection(COLLECTION_NAME)
             chroma_count = collection.count()
         except Exception:
-            # Collection 不存在，自动创建
             logger.info("  collection '%s' 不存在，自动创建...", COLLECTION_NAME)
             collection = client.create_collection(
                 name=COLLECTION_NAME,
@@ -159,7 +150,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("  状态:       [WARN] 连接失败: %s", str(e).split(chr(10))[0][:150])
 
-    # 启动日志：Chroma 摘要
     print(f"Chroma:")
     print(f"  collection: {chroma_collection or '(未创建)'}")
     print(f"  vectors:    {chroma_vectors}")
@@ -167,11 +157,9 @@ async def lifespan(app: FastAPI):
     # ---- 3. 文档状态 ----
     logger.info("Documents:")
     try:
-        from src.knowledge_manager import init_database, get_statistics, get_all_active_files
+        from src.knowledge_manager import init_database, get_statistics
 
-        # 确保知识库元数据表存在（幂等操作）
         init_database()
-
         kb_stats = get_statistics()
         total = kb_stats.get("total_uploaded_files", 0)
         indexed = kb_stats.get("indexed_files", 0)
@@ -181,19 +169,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("  [WARN] 读取文档状态失败: %s", str(e).split(chr(10))[0][:150])
 
-    # ---- 4. Reranker 模型（Phase 1: 完全本地化） ----
-    logger.info("Reranker:")
-    try:
-        from src.reranker import init_reranker_at_startup
-        reranker_status = init_reranker_at_startup()
-        logger.info("  model:    %s", reranker_status["model"])
-        logger.info("  path:     %s", reranker_status["path"])
-        logger.info("  device:   %s", reranker_status["device"])
-        logger.info("  状态:     [%s]", reranker_status["status"])
-    except Exception as e:
-        logger.warning("  [WARN] Reranker 初始化失败: %s", str(e).split(chr(10))[0][:150])
-
-    # ---- 5. LLM 配置 ----
+    # ---- 4. LLM 配置 ----
     logger.info("LLM:")
     try:
         from src.config import validate_llm_config
@@ -207,7 +183,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("  [WARN] 配置验证失败: %s", str(e).split(chr(10))[0][:150])
 
-    # ---- 6. JWT Secret ----
+    # ---- 5. JWT Secret ----
     try:
         from backend.app.services.llm_config_service import get_jwt_secret_sync
         jwt_secret = get_jwt_secret_sync()
@@ -218,9 +194,9 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
-    # ---- 7. 数据库-Chroma 一致性检查 ----
+    # ---- 6. 数据库-Chroma 一致性检查 ----
     try:
-        from src.knowledge_manager import get_statistics as _gs, get_all_active_files as _gaf
+        from src.knowledge_manager import get_statistics as _gs
         kb_stats = _gs()
         db_chunks = kb_stats.get("total_chunks", 0)
         try:
@@ -248,7 +224,7 @@ async def lifespan(app: FastAPI):
         logger.warning("一致性:  [WARN] 检查失败（不影响启动）: %s",
                       str(e).split(chr(10))[0][:150])
 
-    # ---- 8. 自动备份服务 ----
+    # ---- 7. 自动备份服务 ----
     logger.info("Backup:")
     try:
         from backend.app.services.backup_service import start_auto_backup, BackupService
@@ -277,6 +253,9 @@ async def lifespan(app: FastAPI):
     # 关闭时
     from backend.app.services.backup_service import stop_auto_backup
     stop_auto_backup()
+
+    # 关闭推理运行时
+    await runtime.close()
     logger.info("FastAPI 应用关闭")
 
 

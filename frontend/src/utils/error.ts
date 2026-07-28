@@ -19,10 +19,13 @@ export function extractErrorMessage(error: unknown): string {
       case 423:
         return '账户已被锁定，请稍后再试'
       case 429:
-        return '请求过于频繁，请稍后再试'
+        return data?.error?.message || '请求过于频繁，请稍后再试'
       case 500:
-        // 返回服务器真实错误信息，帮助诊断问题
         return data?.error?.message || data?.detail || data?.message || '服务暂不可用，请稍后再试'
+      case 503:
+        return data?.error?.message || '服务暂不可用，请稍后重试'
+      case 504:
+        return data?.error?.message || '请求处理超时，请稍后重试'
       default:
         return data?.error?.message || data?.detail || data?.message || '请求失败，请稍后再试'
     }
@@ -110,8 +113,22 @@ export function isTimeoutError(error: unknown): boolean {
 /** 提取问答专用错误消息 */
 export function extractChatErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'response' in error) {
-    const axiosError = error as { response?: { status?: number; data?: { message?: string } } }
+    const axiosError = error as {
+      response?: {
+        status?: number
+        data?: {
+          message?: string
+          detail?: string
+          error?: { message?: string; code?: string }
+        }
+      }
+    }
     const status = axiosError.response?.status
+    const data = axiosError.response?.data
+
+    // 优先从后端统一错误格式提取消息
+    const errorCode = data?.error?.code || ''
+    const serverMessage = data?.error?.message || data?.detail || data?.message || ''
 
     switch (status) {
       case 401:
@@ -119,11 +136,30 @@ export function extractChatErrorMessage(error: unknown): string {
       case 403:
         return '权限不足，无法使用问答服务'
       case 429:
-        return '请求过于频繁，请稍后再试'
+        // Phase 6: 区分用户请求超限和通用限流
+        if (errorCode === 'USER_REQUEST_LIMIT') {
+          return serverMessage || '当前已有回答正在生成，请稍候。'
+        }
+        return serverMessage || '请求过于频繁，请稍后再试'
       case 500:
         return '服务暂不可用，请稍后再试'
+      case 503:
+        // Phase 6: 推理服务暂不可用 / 排队超时
+        if (errorCode === 'INFERENCE_QUEUE_TIMEOUT') {
+          return serverMessage || '当前问答请求较多，请稍后重试'
+        }
+        if (errorCode === 'INFERENCE_UNAVAILABLE') {
+          return serverMessage || '模型服务暂不可用，请稍后重试或联系管理员'
+        }
+        return serverMessage || '问答服务暂不可用，请稍后重试'
+      case 504:
+        // Phase 6: 推理执行超时
+        if (errorCode === 'INFERENCE_EXECUTION_TIMEOUT') {
+          return serverMessage || '本次处理超时，请缩短问题或稍后重试'
+        }
+        return serverMessage || '回答生成超时，请稍后重试'
       default:
-        return axiosError.response?.data?.message || '问答服务异常，请稍后再试'
+        return serverMessage || '问答服务异常，请稍后再试'
     }
   }
 

@@ -6,10 +6,13 @@
 - GET/POST/DELETE /api/v1/chat/sessions: 需要登录（用户隔离）
 - GET /api/v1/chat/sessions/{id}/messages: 需要登录（用户隔离）
 - POST /api/v1/chat/message: 需要登录（发送消息并保存）
+
+Phase 6: 使用 AsyncRAGAdapter + InferenceRuntime 进行并发控制。
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 import uuid
@@ -44,8 +47,14 @@ from backend.app.schemas.chat import (
     UpdateSessionTitleResponse,
     UserChatResponse,
 )
-from backend.app.security.dependencies import get_current_active_user, require_admin, require_normal_user
+from backend.app.security.dependencies import (
+    get_current_active_user,
+    require_admin,
+    require_normal_user,
+)
 from backend.app.services.rag_adapter import get_rag_adapter
+from backend.app.services.rag_adapter_async import get_async_rag_adapter, set_async_rag_runtime
+from backend.app.services.inference_runtime import UserRequestLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -62,18 +71,58 @@ async def chat(
     """普通用户问答 — 不返回 sources / chunk_id / raw_distance / relevance_score。
 
     需要普通用户权限，管理员禁止访问。
-    知识库外问题保持原有拒答逻辑。
-    LLM 使用普通用户 Prompt（隐藏来源、简洁回答 300-500 字）。
-
-    消息自动保存到 chat_messages，便于工作台统计今日问答。
+    Phase 6: 使用 AsyncRAGAdapter + 用户级并发控制。
     """
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     t0 = time.perf_counter()
 
-    adapter = get_rag_adapter()
-    result = adapter.ask_user(body.question)
+    # ---- Phase 6: 获取推理运行时 ----
+    runtime = getattr(request.app.state, "inference_runtime", None)
+    if runtime is None:
+        # 回退到旧 RAGAdapter
+        adapter = get_rag_adapter()
+        result = adapter.ask_user(body.question)
+        latency = round(time.perf_counter() - t0, 3)
+    else:
+        # 设置异步适配器的运行时引用
+        set_async_rag_runtime(runtime)
 
-    latency = round(time.perf_counter() - t0, 3)
+        # 用户级并发控制
+        settings = __import__('backend.app.config', fromlist=['get_settings']).get_settings()
+        max_per_user = settings.MAX_ACTIVE_RAG_REQUESTS_PER_USER
+        user_id_str = str(current_user.id)
+
+        if not runtime.acquire_user_slot(user_id_str, max_per_user):
+            latency = round(time.perf_counter() - t0, 3)
+            logger.info(
+                "chat 用户请求超限 | user=%s request_id=%s",
+                current_user.username, request_id,
+            )
+            raise UserRequestLimitError()
+
+        try:
+            runtime.metrics.inc_active("rag_active")
+            async_adapter = get_async_rag_adapter()
+            raw = await async_adapter.ask_user_async(
+                body.question,
+                request_id=request_id,
+                user_id=user_id_str,
+            )
+            latency = round(time.perf_counter() - t0, 3)
+
+            # 转换为 UserChatResult 兼容格式
+            from backend.app.services.rag_adapter import UserChatResult
+            result = UserChatResult(
+                answer=raw.get("answer", ""),
+                refused=raw.get("refused", False),
+                refusal_reason=raw.get("refusal_reason"),
+                model=raw.get("model"),
+                latency_seconds=latency,
+                request_id=request_id,
+            )
+        finally:
+            runtime.release_user_slot(user_id_str)
+            runtime.metrics.dec_active("rag_active")
 
     # 自动创建会话并保存消息（用于工作台统计）
     try:
@@ -122,23 +171,12 @@ async def admin_chat_preview(
     """管理员问答预览 — 可以返回经过裁剪的来源和检索调试信息。
 
     需要管理员权限（require_admin）。
-    普通用户访问返回 403。
-
-    RAG 3.0 增强:
-    - LLM 使用管理员 Prompt（允许引用来源、详细回答）。
-    - 来源包含: file_name, version, page, content_preview
-    - debug=True 时返回完整检索链路（初始检索→Rerank→最终结果）
-    - debug=True 时消息标记为 is_test，工作台统计排除
-
-    Query Parameters
-    ----------------
-    debug : bool
-        是否开启检索调试模式，默认 False。
-        开启后返回完整的检索链路信息，方便调优。
+    Phase 6: 管理员请求不进入用户级并发控制。
     """
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
     t0 = time.perf_counter()
 
+    # 管理员使用同步适配器（管理后台调用频率低，不需要排队）
     adapter = get_rag_adapter()
     result = adapter.ask_admin(body.question, debug=debug)
 
@@ -370,11 +408,47 @@ async def send_message(
         except Exception as e:
             logger.debug("Conversation Memory 跳过: %s", str(e)[:80])
 
-    # 调用 RAG（普通用户模式，使用增强后的查询）
+    # 调用 RAG（Phase 6: 使用 AsyncRAGAdapter + 用户级并发控制）
     t0 = time.perf_counter()
-    adapter = get_rag_adapter()
-    result = adapter.ask_user(enhanced_question)
-    latency = round(time.perf_counter() - t0, 3)
+    runtime = getattr(request.app.state, "inference_runtime", None)
+
+    if runtime is not None:
+        set_async_rag_runtime(runtime)
+        settings = __import__('backend.app.config', fromlist=['get_settings']).get_settings()
+        max_per_user = settings.MAX_ACTIVE_RAG_REQUESTS_PER_USER
+        user_id_str = str(current_user.id)
+
+        if not runtime.acquire_user_slot(user_id_str, max_per_user):
+            latency = round(time.perf_counter() - t0, 3)
+            raise UserRequestLimitError()
+
+        try:
+            runtime.metrics.inc_active("rag_active")
+            async_adapter = get_async_rag_adapter()
+            raw = await async_adapter.ask_user_async(
+                enhanced_question,
+                request_id=request_id,
+                user_id=user_id_str,
+            )
+            from backend.app.services.rag_adapter import UserChatResult
+            result = UserChatResult(
+                answer=raw.get("answer", ""),
+                refused=raw.get("refused", False),
+                refusal_reason=raw.get("refusal_reason"),
+                model=raw.get("model"),
+                latency_seconds=0,
+                request_id=request_id,
+            )
+            latency = round(time.perf_counter() - t0, 3)
+            result.latency_seconds = latency
+        finally:
+            runtime.release_user_slot(user_id_str)
+            runtime.metrics.dec_active("rag_active")
+    else:
+        # 回退到旧同步适配器
+        adapter = get_rag_adapter()
+        result = adapter.ask_user(enhanced_question)
+        latency = round(time.perf_counter() - t0, 3)
 
     # 保存助手消息
     assistant_msg = chat_repository.create_message(
