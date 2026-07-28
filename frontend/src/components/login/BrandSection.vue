@@ -2,8 +2,7 @@
   <!--
     BrandSection — 左侧品牌展示区域
 
-    包含：AI 六边形 Logo（呼吸动画）、品牌名称（煜见AI）、
-          平台定位、宣传语、功能介绍列表
+    包含：品牌名称（煜见AI）、平台定位、宣传语、功能介绍列表
 
     设计：企业级 AI 知识平台 · 高端克制
   -->
@@ -17,9 +16,6 @@
         :style="dotStyle(i)"
       />
     </div>
-
-    <!-- AI 六边形 Logo -->
-    <AiLogo />
 
     <!-- 品牌名称 — 渐变文字 -->
     <h1 class="brand-section__name">
@@ -45,7 +41,6 @@
 </template>
 
 <script setup lang="ts">
-import AiLogo from './AiLogo.vue'
 import FeatureList from './FeatureList.vue'
 
 /** 为淡化背景点生成随机位置样式 */
@@ -115,7 +110,7 @@ function dotStyle(i: number): Record<string, string> {
   z-index: 1;
   font-size: 42px;
   font-weight: 800;
-  margin: 28px 0 12px;
+  margin: 0 0 14px;
   background: linear-gradient(135deg, #8baef0 0%, #a78bfa 40%, #c4b5fd 70%, #818cf8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -169,7 +164,6 @@ function dotStyle(i: number): Record<string, string> {
 
   .brand-section__name {
     font-size: 32px;
-    margin-top: 20px;
     letter-spacing: 2px;
   }
 
