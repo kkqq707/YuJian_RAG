@@ -1,7 +1,7 @@
 <template>
   <div class="welcome-panel">
     <div class="welcome-icon">
-      <Sparkles :size="48" />
+      <Sparkles :size="isMobile ? 36 : 48" />
     </div>
     <h1 class="welcome-title">您好，我是企业智库 AI 助手</h1>
     <p class="welcome-desc">
@@ -11,8 +11,9 @@
       <button
         v-for="item in suggestions"
         :key="item"
-        class="suggestion-card"
+        class="suggestion-card touch-target-min"
         :disabled="sending"
+        :aria-label="`推荐问题：${item}`"
         @click="$emit('select', item)"
       >
         {{ item }}
@@ -26,16 +27,13 @@ import { Sparkles } from '@lucide/vue'
 
 defineProps<{
   sending?: boolean
+  isMobile?: boolean
 }>()
 
 defineEmits<{
   select: [question: string]
 }>()
 
-/**
- * 推荐问题 — 基于企业知识库常见问题
- * 快速提问卡片：公司介绍 / 产品信息 / 服务流程 / 合作政策
- */
 const suggestions = [
   '公司介绍：煜见科技是做什么的？',
   '产品信息：煜见科技有哪些产品？',
@@ -52,6 +50,7 @@ const suggestions = [
   justify-content: center;
   padding: $spacing-2xl $spacing-lg;
   text-align: center;
+  min-height: 0;
   animation: fadeInUp 0.5s ease;
 }
 
@@ -65,13 +64,15 @@ const suggestions = [
   align-items: center;
   justify-content: center;
   margin-bottom: $spacing-lg;
+  flex-shrink: 0;
 }
 
 .welcome-title {
   font-size: $font-size-2xl;
   font-weight: 600;
   color: $color-text-primary;
-  margin-bottom: $spacing-sm;
+  margin: 0 0 $spacing-sm;
+  line-height: 1.4;
 }
 
 .welcome-desc {
@@ -79,7 +80,7 @@ const suggestions = [
   color: $color-text-secondary;
   max-width: 420px;
   line-height: 1.6;
-  margin-bottom: $spacing-xl;
+  margin: 0 0 $spacing-xl;
 }
 
 .welcome-suggestions {
@@ -103,6 +104,8 @@ const suggestions = [
   cursor: pointer;
   transition: all $transition-fast;
   font-family: inherit;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 
   &:hover:not(:disabled) {
     border-color: $color-primary;
@@ -116,6 +119,10 @@ const suggestions = [
   }
 }
 
+.touch-target-min {
+  min-height: var(--touch-target-min);
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -127,12 +134,72 @@ const suggestions = [
   }
 }
 
-@media (max-width: 768px) {
-  .welcome-suggestions {
-    grid-template-columns: 1fr;
+// ================================================================
+// 平板端适配 (768px - 1199px)
+// ================================================================
+@media (min-width: 768px) and (max-width: 1199px) {
+  .welcome-panel {
+    padding: $spacing-xl $spacing-md;
   }
+
+  .welcome-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    margin-bottom: $spacing-md;
+  }
+
   .welcome-title {
     font-size: $font-size-xl;
+  }
+
+  .welcome-suggestions {
+    max-width: 440px;
+  }
+}
+
+// ================================================================
+// 移动端适配 (< 768px)
+// ================================================================
+@media (max-width: 767px) {
+  .welcome-panel {
+    padding: $spacing-lg $spacing-md;
+    justify-content: flex-start;
+    overflow-y: auto;
+  }
+
+  .welcome-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    margin-bottom: $spacing-md;
+  }
+
+  .welcome-title {
+    font-size: $font-size-lg;
+  }
+
+  .welcome-desc {
+    font-size: $font-size-sm;
+    max-width: 300px;
+    margin-bottom: $spacing-lg;
+  }
+
+  .welcome-suggestions {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+
+  .suggestion-card {
+    padding: 12px 14px;
+    font-size: $font-size-xs;
+  }
+}
+
+// ---- prefers-reduced-motion ----
+@media (prefers-reduced-motion: reduce) {
+  .welcome-panel {
+    animation: none;
   }
 }
 </style>

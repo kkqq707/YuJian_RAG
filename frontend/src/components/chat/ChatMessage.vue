@@ -9,7 +9,7 @@
     <!-- 助手消息：AI 图标 -->
     <div v-if="message.role === 'assistant'" class="chat-message__avatar">
       <div class="chat-message__avatar-icon">
-        <Sparkles :size="18" />
+        <Sparkles :size="isMobile ? 16 : 18" />
       </div>
     </div>
 
@@ -52,13 +52,20 @@
           耗时 {{ message.latencySeconds.toFixed(1) }}s
         </span>
         <div class="chat-message__actions">
-          <el-button size="small" text @click="handleCopy">
+          <el-button size="small" text class="touch-target-min" aria-label="复制回答" @click="handleCopy">
             <Copy :size="14" />
-            <span>复制</span>
+            <span>{{ isMobile ? '' : '复制' }}</span>
           </el-button>
-          <el-button size="small" text @click="$emit('regenerate')" :disabled="sending">
+          <el-button
+            size="small"
+            text
+            class="touch-target-min"
+            aria-label="重新生成"
+            :disabled="sending"
+            @click="$emit('regenerate')"
+          >
             <RefreshCw :size="14" />
-            <span>重新生成</span>
+            <span>{{ isMobile ? '' : '重新生成' }}</span>
           </el-button>
         </div>
       </div>
@@ -76,6 +83,7 @@ import type { ChatMessage as ChatMessageType } from '@/types/chat'
 const props = defineProps<{
   message: ChatMessageType
   sending?: boolean
+  isMobile?: boolean
 }>()
 
 defineEmits<{
@@ -85,7 +93,6 @@ defineEmits<{
 
 async function handleCopy() {
   try {
-    // 只复制纯文本内容（不含隐藏技术字段）
     await navigator.clipboard.writeText(props.message.content)
     ElMessage.success('已复制到剪贴板')
   } catch {
@@ -111,8 +118,9 @@ async function handleCopy() {
       border-bottom-right-radius: 4px;
       max-width: 70%;
       padding: 12px 16px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
-
   }
 
   &--assistant {
@@ -120,9 +128,11 @@ async function handleCopy() {
       background: $color-card-bg;
       border-radius: 12px;
       border-bottom-left-radius: 4px;
-      max-width: 78%;
+      max-width: 90%;
       padding: 16px 20px;
       box-shadow: $shadow-card;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
   }
 
@@ -203,6 +213,8 @@ async function handleCopy() {
   color: $color-danger;
   font-size: $font-size-sm;
   padding: 4px 0;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
 }
 
 // 底部信息栏
@@ -211,6 +223,7 @@ async function handleCopy() {
   align-items: center;
   gap: $spacing-sm;
   margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 .chat-message__latency {
@@ -235,6 +248,10 @@ async function handleCopy() {
   }
 }
 
+.touch-target-min {
+  min-height: var(--touch-target-min);
+}
+
 @keyframes msgFadeIn {
   from {
     opacity: 0;
@@ -257,13 +274,62 @@ async function handleCopy() {
   }
 }
 
-// 移动端
-@media (max-width: 768px) {
+// ================================================================
+// 平板端适配 (768px - 1199px)
+// ================================================================
+@media (min-width: 768px) and (max-width: 1199px) {
   .chat-message--user .chat-message__content {
-    max-width: 92%;
+    max-width: 78%;
   }
   .chat-message--assistant .chat-message__content {
-    max-width: 92%;
+    max-width: 94%;
+  }
+}
+
+// ================================================================
+// 移动端适配 (< 768px)
+// ================================================================
+@media (max-width: 767px) {
+  .chat-message {
+    gap: $spacing-xs;
+    margin-bottom: $spacing-md;
+  }
+
+  .chat-message--user .chat-message__content {
+    max-width: 85%;
+    padding: 10px 14px;
+  }
+
+  .chat-message--assistant .chat-message__content {
+    max-width: 96%;
+    padding: 12px 14px;
+  }
+
+  .chat-message__avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .chat-message__avatar-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+
+  .chat-message__actions :deep(.el-button) {
+    padding: 4px;
+  }
+}
+
+// ---- prefers-reduced-motion ----
+@media (prefers-reduced-motion: reduce) {
+  .chat-message {
+    animation: none;
+  }
+
+  .chat-message__loading .loading-dot {
+    animation: none;
+    opacity: 0.6;
   }
 }
 </style>
