@@ -1,0 +1,42 @@
+/* ============================================================
+ * YuJian AI — 全局 CSS 变量（布局 / 响应式 / 安全区域）
+ *
+ * 与 theme.css 互补：theme.css 负责品牌色和视觉效果，
+ * 本文件负责布局、断点、间距和安全区域变量。
+ * ============================================================ */
+
+:root {
+  /* ---- 统一断点（只读参考，不直接在媒体查询中使用） ---- */
+  --breakpoint-mobile: 768px;
+  --breakpoint-desktop: 1200px;
+
+  /* ---- 页面内边距 ---- */
+  --page-padding-desktop: 24px;
+  --page-padding-tablet: 16px;
+  --page-padding-mobile: 12px;
+
+  /* ---- 布局尺寸 ---- */
+  --header-height-desktop: 64px;
+  --header-height-mobile: 52px;
+  --sidebar-width-desktop: 240px;
+  --content-max-width: 1600px;
+
+  /* ---- 触控目标最小尺寸 ---- */
+  --touch-target-min: 44px;
+
+  /* ---- 安全区域（刘海屏 / 底部指示条） ---- */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+
+  /* ---- 动态视口高度（降级方案见 global.css） ---- */
+  --app-height: 100vh;
+}
+
+/* dvh 支持的浏览器使用动态视口高度 */
+@supports (height: 100dvh) {
+  :root {
+    --app-height: 100dvh;
+  }
+}
