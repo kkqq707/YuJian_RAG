@@ -94,8 +94,8 @@ data/chroma/
 # --- 上传文件 (用户数据) ---
 data/uploads/
 
-# --- 模型文件 ---
-models/
+# --- 模型文件（仅忽略大模型权重目录，不影响 ORM 代码 backend/app/models/） ---
+/backend/models/
 
 # --- 存储备份 ---
 storage/backup/
@@ -111,3 +111,5 @@ _debug_backup_*/
 # --- 备份文件 ---
 *.backup
 *.old
+
+models.tar.gz
