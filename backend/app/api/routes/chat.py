@@ -354,11 +354,11 @@ async def send_message(
 ):
     """发送消息并保存到数据库。
 
-    1. 验证会话所有权
-    2. 保存用户消息到数据库
-    3. 调用 RAG 生成回答
-    4. 保存助手消息到数据库
-    5. 更新会话 updated_at
+    Phase 7: 缩短事务边界 — RAG 调用前提交数据库事务。
+
+    1. 验证会话所有权 + 保存用户消息 → 提交事务
+    2. 调用 RAG 生成回答（不持有数据库事务）
+    3. 保存助手消息 + 更新会话
     """
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
 
@@ -407,6 +407,9 @@ async def send_message(
             logger.debug("Conversation Memory: '%s' → '%s'", body.question, enhanced_question)
         except Exception as e:
             logger.debug("Conversation Memory 跳过: %s", str(e)[:80])
+
+    # Phase 7: 提交数据库事务，释放写锁。RAG 调用期间不持有数据库事务。
+    db.commit()
 
     # 调用 RAG（Phase 6: 使用 AsyncRAGAdapter + 用户级并发控制）
     t0 = time.perf_counter()

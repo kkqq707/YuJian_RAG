@@ -118,35 +118,39 @@ class SystemService:
 
         try:
             # ---- Chroma 状态 ----
-            # Chroma v0.6.x 兼容: 使用 get_or_create_collection 确保 collection 可访问，
-            # 不依赖 list_collections() 的字符串匹配
+            # Phase 7: 优先使用缓存的 VectorStoreRuntime 中的 collection
             try:
-                from src.vector_store import get_chroma_client, get_or_create_collection
-                from src.config import COLLECTION_NAME
-
-                client = get_chroma_client()
-                try:
-                    collection = get_or_create_collection()
-                    chroma_count = collection.count()
+                from backend.app.vector_store_runtime import get_vector_store_runtime
+                runtime = get_vector_store_runtime()
+                if runtime.is_initialized() and runtime.collection is not None:
+                    chroma_count = runtime.collection.count()
                     result["chroma"] = {
                         "collections": 1,
                         "vectors": chroma_count,
                         "status": "ok",
                     }
-                    logger.info(
-                        "[CHROMA HEALTH] connected=True collection=%s count=%s",
-                        COLLECTION_NAME, chroma_count,
-                    )
-                except Exception:
-                    result["chroma"] = {
-                        "collections": 0,
-                        "vectors": 0,
-                        "status": "collection_not_found",
-                    }
-                    logger.warning(
-                        "[CHROMA HEALTH] connected=False collection_not_found=%s",
-                        COLLECTION_NAME,
-                    )
+                else:
+                    # 回退
+                    from src.vector_store import get_chroma_client, get_or_create_collection
+                    from src.config import COLLECTION_NAME
+                    client = get_chroma_client()
+                    try:
+                        collection = get_or_create_collection()
+                        chroma_count = collection.count()
+                        result["chroma"] = {
+                            "collections": 1,
+                            "vectors": chroma_count,
+                            "status": "ok",
+                        }
+                    except Exception:
+                        result["chroma"] = {
+                            "collections": 0,
+                            "vectors": 0,
+                            "status": "collection_not_found",
+                        }
+                logger.info(
+                    "[CHROMA HEALTH] connected=True",
+                )
             except Exception as e:
                 result["chroma"] = {
                     "collections": 0,

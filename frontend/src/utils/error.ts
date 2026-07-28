@@ -11,11 +11,19 @@ export function extractErrorMessage(error: unknown): string {
     const status = axiosError.response?.status
     const data = axiosError.response?.data
 
+    const errorCode = data?.error?.code || ''
+
     switch (status) {
       case 401:
         return '登录已过期，请重新登录'
       case 403:
         return '没有访问权限'
+      case 409:
+        // Phase 7: 重复操作
+        if (errorCode === 'DUPLICATE_OPERATION') {
+          return data?.error?.message || '该操作正在进行中，请勿重复提交'
+        }
+        return data?.error?.message || '操作冲突，请稍后重试'
       case 423:
         return '账户已被锁定，请稍后再试'
       case 429:
@@ -23,6 +31,16 @@ export function extractErrorMessage(error: unknown): string {
       case 500:
         return data?.error?.message || data?.detail || data?.message || '服务暂不可用，请稍后再试'
       case 503:
+        // Phase 7: 数据库与向量库繁忙
+        if (errorCode === 'DATABASE_BUSY') {
+          return data?.error?.message || '系统当前繁忙，请稍后重试'
+        }
+        if (errorCode === 'VECTOR_STORE_BUSY') {
+          return data?.error?.message || '知识库正在处理其他任务，请稍后再试'
+        }
+        if (errorCode === 'VECTOR_STORE_OPERATION_FAILED') {
+          return data?.error?.message || '知识库操作失败，请联系管理员'
+        }
         return data?.error?.message || '服务暂不可用，请稍后重试'
       case 504:
         return data?.error?.message || '请求处理超时，请稍后重试'
@@ -151,7 +169,23 @@ export function extractChatErrorMessage(error: unknown): string {
         if (errorCode === 'INFERENCE_UNAVAILABLE') {
           return serverMessage || '模型服务暂不可用，请稍后重试或联系管理员'
         }
+        // Phase 7: 数据库与向量库繁忙
+        if (errorCode === 'DATABASE_BUSY') {
+          return serverMessage || '系统当前繁忙，请稍后重试'
+        }
+        if (errorCode === 'VECTOR_STORE_BUSY') {
+          return serverMessage || '知识库正在处理其他任务，请稍后再试'
+        }
+        if (errorCode === 'VECTOR_STORE_OPERATION_FAILED') {
+          return serverMessage || '知识库操作失败，请联系管理员'
+        }
         return serverMessage || '问答服务暂不可用，请稍后重试'
+      case 409:
+        // Phase 7: 重复操作（如索引重建中）
+        if (errorCode === 'DUPLICATE_OPERATION') {
+          return serverMessage || '该文档正在处理中，请勿重复提交'
+        }
+        return serverMessage || '操作冲突，请稍后重试'
       case 504:
         // Phase 6: 推理执行超时
         if (errorCode === 'INFERENCE_EXECUTION_TIMEOUT') {

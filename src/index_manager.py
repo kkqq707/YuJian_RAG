@@ -63,6 +63,9 @@ logger = logging.getLogger(__name__)
 _index_locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
 
+# Phase 7: 全局重建状态标志
+_rebuild_in_progress: bool = False
+
 
 def _get_file_lock(upload_id: str) -> threading.Lock:
     """获取文件级别的锁，避免同一文件并发索引。"""
@@ -187,7 +190,17 @@ def index_single_file(
     """
     lock = _get_file_lock(upload_id)
     if not lock.acquire(blocking=False):
-        raise RuntimeError(f"文件正在被另一个索引任务处理: {upload_id}")
+        # Phase 7: 如果重建正在进行中，等待（而非立即失败）
+        if _rebuild_in_progress:
+            logger.info(
+                "重建正在进行中，等待文件锁: %s (最多 30s)", upload_id,
+            )
+            if not lock.acquire(timeout=30.0):
+                raise RuntimeError(
+                    f"等待文件锁超时（重建进行中）: {upload_id}"
+                )
+        else:
+            raise RuntimeError(f"文件正在被另一个索引任务处理: {upload_id}")
 
     try:
         file_record = get_file_by_id(upload_id)
@@ -455,13 +468,19 @@ def rebuild_all_indexes(
         "errors": [],
     }
 
+    global _rebuild_in_progress
+
     try:
-        from src.vector_store import reset_vector_store
+        from src.vector_store import get_chroma_client
+        from src.config import COLLECTION_NAME
         from src.knowledge_manager import (
             get_all_active_files,
             reset_all_index_status,
             SOURCE_TYPE_UPLOAD,
         )
+
+        # Phase 7: 标记重建进行中
+        _rebuild_in_progress = True
 
         # ---- 1. 从数据库获取所有活跃上传文件 ----
         active_files = get_all_active_files(source_type=SOURCE_TYPE_UPLOAD)
@@ -489,7 +508,50 @@ def rebuild_all_indexes(
             progress_callback("清空向量库", "正在删除旧索引...", 0, total)
         update_index_task(task_id, status=INDEX_TASK_CLEANING, progress=5)
 
-        reset_vector_store()
+        # Phase 7: 使用 Chroma collection 直接清空，替代 reset_vector_store()
+        # 原因：reset_vector_store() 会删除整个 collection 并重置客户端单例，
+        # 可能导致并发读取操作失败。改为直接删除 collection 中的所有数据。
+        client = get_chroma_client()
+        try:
+            collection = client.get_collection(COLLECTION_NAME)
+            all_ids = collection.get().get("ids", [])
+            if all_ids:
+                collection.delete(ids=all_ids)
+                logger.info("重建索引: 已从 collection 删除 %d 条旧记录", len(all_ids))
+            else:
+                logger.info("重建索引: collection 已为空，无需清理")
+            # 验证清空
+            remaining = collection.count()
+            if remaining != 0:
+                logger.warning(
+                    "重建索引: collection 清空后仍有 %d 条记录，尝试 API 删除 collection",
+                    remaining,
+                )
+                # 回退到 reset_vector_store 作为兜底
+                from src.vector_store import reset_vector_store
+                reset_vector_store()
+                # 重新获取 collection 并验证
+                client = get_chroma_client()
+                try:
+                    collection = client.get_collection(COLLECTION_NAME)
+                except Exception:
+                    collection = client.create_collection(
+                        name=COLLECTION_NAME,
+                        metadata={"hnsw:space": "cosine"},
+                    )
+                remaining = collection.count()
+                if remaining != 0:
+                    raise RuntimeError(
+                        f"向量库清空失败: collection 中仍有 {remaining} 条记录"
+                    )
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "does not exist" in err_msg or "not found" in err_msg:
+                logger.info("重建索引: collection 不存在，将自动创建")
+                # collection 不存在视为已清空，后续操作会重新创建
+            else:
+                raise
+
         logger.info("重建索引: 向量库已清空")
 
         # ---- 3. 重置所有文件索引状态 ----
@@ -592,6 +654,9 @@ def rebuild_all_indexes(
             except Exception:
                 pass
         return result
+    finally:
+        # Phase 7: 清除重建状态标志
+        _rebuild_in_progress = False
 
 
 def get_index_statistics() -> dict:

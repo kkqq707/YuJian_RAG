@@ -41,6 +41,7 @@ from backend.app.schemas.admin_files import (
 from backend.app.security.dependencies import require_admin
 from backend.app.services.admin_files_service import AdminFilesService
 from backend.app.services.audit_service import AuditService
+from backend.app.vector_store_runtime import VectorStoreBusyError, DuplicateOperationError
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +159,12 @@ async def rebuild_index(
     需要管理员权限。
     """
     service = AdminFilesService()
-    result = service.rebuild_index()
+    try:
+        result = await service.rebuild_index()
+    except DuplicateOperationError as e:
+        raise HTTPException(status_code=409, detail=e.message)
+    except VectorStoreBusyError as e:
+        raise HTTPException(status_code=503, detail=e.message)
 
     # 审计日志
     ip, ua = _get_client_info(request)
@@ -301,7 +307,10 @@ async def delete_file(
     需要管理员权限。
     """
     service = AdminFilesService()
-    result = service.delete_file(file_id)
+    try:
+        result = await service.delete_file(file_id)
+    except VectorStoreBusyError as e:
+        raise HTTPException(status_code=503, detail=e.message)
 
     # 审计日志
     ip, ua = _get_client_info(request)
@@ -424,7 +433,10 @@ async def index_single_file(
     需要管理员权限。
     """
     service = AdminFilesService()
-    result = service.index_single_file(file_id)
+    try:
+        result = await service.index_single_file(file_id)
+    except VectorStoreBusyError as e:
+        raise HTTPException(status_code=503, detail=e.message)
 
     # 审计日志
     ip, ua = _get_client_info(request)

@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     # ---- 数据库 ----
     DATABASE_URL: str = "sqlite:///storage/app.db"
 
+    # ---- SQLite 并发配置 (Phase 7) ----
+    SQLITE_BUSY_TIMEOUT_MS: int = 30000
+    SQLITE_LOCK_RETRY_COUNT: int = 3
+    SQLITE_LOCK_RETRY_BASE_DELAY_MS: int = 100
+
     # ---- JWT ----
     JWT_SECRET_KEY: str = ""  # 必须来自环境变量或 .env，无硬编码默认值
     JWT_ALGORITHM: str = "HS256"
@@ -121,13 +126,33 @@ class Settings(BaseSettings):
         "RERANKER_MAX_CONCURRENCY",
         "INFERENCE_THREAD_POOL_SIZE",
         "MAX_ACTIVE_RAG_REQUESTS_PER_USER",
+        "SQLITE_BUSY_TIMEOUT_MS",
+        "SQLITE_LOCK_RETRY_COUNT",
         mode="after",
     )
     @classmethod
     def validate_positive_int(cls, v: int) -> int:
-        """确保并发/线程池值 >= 1。"""
+        """确保并发/线程池/超时值 >= 1。"""
         if v < 1:
             raise ValueError(f"值必须 >= 1，当前值: {v}")
+        return v
+
+    @field_validator("SQLITE_LOCK_RETRY_COUNT", mode="after")
+    @classmethod
+    def validate_retry_count(cls, v: int) -> int:
+        """重试次数上限 10。"""
+        if v > 10:
+            raise ValueError(f"SQLITE_LOCK_RETRY_COUNT 不能超过 10，当前值: {v}")
+        return v
+
+    @field_validator("SQLITE_LOCK_RETRY_BASE_DELAY_MS", mode="after")
+    @classmethod
+    def validate_base_delay(cls, v: int) -> int:
+        """基础退避延迟上限 5000ms。"""
+        if v < 0:
+            raise ValueError(f"SQLITE_LOCK_RETRY_BASE_DELAY_MS 不得为负数，当前值: {v}")
+        if v > 5000:
+            raise ValueError(f"SQLITE_LOCK_RETRY_BASE_DELAY_MS 不能超过 5000，当前值: {v}")
         return v
 
     @field_validator(

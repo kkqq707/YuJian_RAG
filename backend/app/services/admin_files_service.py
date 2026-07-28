@@ -18,8 +18,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import sys
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -28,12 +30,24 @@ from typing import Optional
 from fastapi import UploadFile
 
 from backend.app.config import get_settings
+from backend.app.vector_store_runtime import (
+    get_vector_store_runtime,
+    VectorStoreBusyError,
+    DuplicateOperationError,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class AdminFilesService:
-    """管理员知识库文件管理服务。"""
+    """管理员知识库文件管理服务。
+
+    Phase 7: 添加 Chroma 写锁保护。
+    """
+
+    # Phase 7: 类级别重建标志和锁
+    _rebuild_lock = threading.Lock()
+    _rebuild_in_progress: bool = False
 
     def __init__(self):
         self.settings = get_settings()
@@ -248,7 +262,7 @@ class AdminFilesService:
                 )
 
                 # 删除旧索引并重新索引新文件
-                self._reindex_file_with_new_version(
+                await self._reindex_file_with_new_version(
                     upload_id, stored_path, file_type=validation["file_type"]
                 )
 
@@ -341,15 +355,22 @@ class AdminFilesService:
 
         return result
 
-    def _reindex_file_with_new_version(
+    async def _reindex_file_with_new_version(
         self, file_id: str, new_stored_path: Path, file_type: str
     ) -> None:
-        """为新版本文件重建索引。"""
+        """为新版本文件重建索引（Phase 7: 带写锁保护）。"""
         from src.knowledge_manager import (
             update_index_status,
             update_file_preview_status,
         )
         from src.index_manager import index_single_file, _remove_chunks_by_upload_id
+
+        runtime = get_vector_store_runtime()
+        try:
+            await asyncio.wait_for(runtime.write_lock.acquire(), timeout=30.0)
+        except asyncio.TimeoutError:
+            runtime.metrics.record_write_timeout()
+            raise VectorStoreBusyError("知识库正在处理其他写操作，请稍后重试")
 
         try:
             # 删除旧索引
@@ -377,6 +398,8 @@ class AdminFilesService:
             )
         except Exception as e:
             logger.warning("新版本索引失败: file_id=%s — %s", file_id, str(e)[:200])
+        finally:
+            runtime.write_lock.release()
 
     # ------------------------------------------------------------------
     # 文件详情
@@ -695,8 +718,8 @@ class AdminFilesService:
     # 单文件索引
     # ------------------------------------------------------------------
 
-    def index_single_file(self, file_id: str) -> dict:
-        """为单个文件建立或重建索引。
+    async def index_single_file(self, file_id: str) -> dict:
+        """为单个文件建立或重建索引（Phase 7: 带写锁保护）。
 
         Parameters
         ----------
@@ -709,6 +732,13 @@ class AdminFilesService:
         """
         from src.index_manager import index_single_file as do_index
         from src.knowledge_manager import update_file_preview_status, add_operation_log
+
+        runtime = get_vector_store_runtime()
+        try:
+            await asyncio.wait_for(runtime.write_lock.acquire(), timeout=30.0)
+        except asyncio.TimeoutError:
+            runtime.metrics.record_write_timeout()
+            raise VectorStoreBusyError("知识库正在处理其他写操作，请稍后重试")
 
         try:
             chunk_count = do_index(file_id)
@@ -739,13 +769,15 @@ class AdminFilesService:
                 "message": error_msg,
                 "chunk_count": 0,
             }
+        finally:
+            runtime.write_lock.release()
 
     # ------------------------------------------------------------------
     # 文件删除
     # ------------------------------------------------------------------
 
-    def delete_file(self, file_id: str) -> dict:
-        """删除知识库文件。
+    async def delete_file(self, file_id: str) -> dict:
+        """删除知识库文件（Phase 7: 带写锁保护）。
 
         流程:
         1. 从 Chroma 删除对应 chunks
@@ -768,44 +800,56 @@ class AdminFilesService:
         file_record = get_file_by_id(file_id)
         original_name = file_record.get("original_name", "未知") if file_record else "未知"
 
-        result = remove_file_from_index(file_id)
+        runtime = get_vector_store_runtime()
+        try:
+            await asyncio.wait_for(runtime.write_lock.acquire(), timeout=30.0)
+        except asyncio.TimeoutError:
+            runtime.metrics.record_write_timeout()
+            raise VectorStoreBusyError("知识库正在处理其他写操作，请稍后重试")
 
-        if result["success"]:
-            add_operation_log(
-                user_id="admin",
-                operation="delete_file",
-                target=original_name,
-                result="success",
-            )
-            logger.info("文件删除成功: %s, 删除 %d chunks", file_id, result["deleted_count"])
-            return {
-                "success": True,
-                "message": "文件已删除",
-                "file_id": file_id,
-                "deleted_chunks": result["deleted_count"],
-            }
-        else:
-            error_msg = result.get("error", "删除失败")
-            logger.warning("文件删除失败: %s — %s", file_id, error_msg)
-            return {
-                "success": False,
-                "message": error_msg,
-                "file_id": file_id,
-                "deleted_chunks": 0,
-            }
+        try:
+            result = remove_file_from_index(file_id)
+
+            if result["success"]:
+                add_operation_log(
+                    user_id="admin",
+                    operation="delete_file",
+                    target=original_name,
+                    result="success",
+                )
+                logger.info("文件删除成功: %s, 删除 %d chunks", file_id, result["deleted_count"])
+                return {
+                    "success": True,
+                    "message": "文件已删除",
+                    "file_id": file_id,
+                    "deleted_chunks": result["deleted_count"],
+                }
+            else:
+                error_msg = result.get("error", "删除失败")
+                logger.warning("文件删除失败: %s — %s", file_id, error_msg)
+                return {
+                    "success": False,
+                    "message": error_msg,
+                    "file_id": file_id,
+                    "deleted_chunks": 0,
+                }
+        finally:
+            runtime.write_lock.release()
 
     # ------------------------------------------------------------------
     # 重建索引
     # ------------------------------------------------------------------
 
-    def rebuild_index(self) -> dict:
-        """重建全部上传文件索引（仅限通过管理后台上传的文件）。
+    async def rebuild_index(self) -> dict:
+        """重建全部上传文件索引（Phase 7: 带全局写锁和重复重建保护）。
 
         流程:
-        1. 从数据库获取活跃上传文件列表
-        2. 清空 Chroma 向量库
-        3. 重置所有状态为 pending
-        4. 逐个重新索引
+        1. 检查是否有重建正在进行（重复重建返回 409）
+        2. 获取全局写锁
+        3. 从数据库获取活跃上传文件列表
+        4. 清空 Chroma 向量库
+        5. 重置所有状态为 pending
+        6. 逐个重新索引
 
         进度信息通过服务端日志输出。
 
@@ -815,53 +859,86 @@ class AdminFilesService:
         """
         from src.index_manager import rebuild_all_indexes
 
+        # Phase 7: 检查是否有重建正在进行
+        if AdminFilesService._rebuild_in_progress:
+            raise DuplicateOperationError("索引重建正在进行中，请稍后再试")
+
         def log_progress(stage: str, detail: str, current: int, total: int):
             """将索引进度写入服务端日志。"""
             logger.info("索引重建进度 [%s]: %s (%s/%s)", stage, detail, current, total)
 
         logger.info("管理员触发索引重建...")
         t0 = time.time()
-        result = rebuild_all_indexes(progress_callback=log_progress)
-        elapsed = round(time.time() - t0, 2)
 
-        if result["success"]:
-            logger.info(
-                "索引重建完成: %d/%d 文件成功, %d chunks, 耗时 %.2fs",
-                result.get("indexed", 0),
-                result.get("total_files", 0),
-                result.get("total_chunks", 0),
-                result.get("elapsed_seconds", 0),
-            )
-            return {
-                "success": True,
-                "message": (
-                    f"索引重建完成，共处理 {result['total_files']} 个文件，"
-                    f"成功 {result['indexed']} 个，"
-                    f"共 {result['total_chunks']} 个片段"
-                ),
-                "total_files": result.get("total_files", 0),
-                "indexed": result.get("indexed", 0),
-                "failed": result.get("failed", 0),
-                "total_chunks": result.get("total_chunks", 0),
-                "elapsed_seconds": result.get("elapsed_seconds", 0.0),
-                "task_id": result.get("task_id"),
-                "errors": result.get("errors", []),
-            }
-        else:
-            error_msg = result.get("error", "重建失败")
-            logger.warning("索引重建失败: %s", error_msg)
-            return {
-                "success": False,
-                "message": error_msg,
-                "total_files": result.get("total_files", 0),
-                "indexed": result.get("indexed", 0),
-                "failed": result.get("failed", 0),
-                "total_chunks": result.get("total_chunks", 0),
-                "elapsed_seconds": result.get("elapsed_seconds", 0.0),
-                "task_id": result.get("task_id"),
-                "errors": result.get("errors", []),
-                "error": error_msg,
-            }
+        # Phase 7: 获取全局写锁
+        runtime = get_vector_store_runtime()
+        try:
+            await asyncio.wait_for(runtime.write_lock.acquire(), timeout=30.0)
+        except asyncio.TimeoutError:
+            runtime.metrics.record_write_timeout()
+            raise VectorStoreBusyError("知识库正在处理其他写操作，请稍后重试")
+
+        # Phase 7: 设置重建标志 + 获取重建锁
+        with AdminFilesService._rebuild_lock:
+            if AdminFilesService._rebuild_in_progress:
+                raise DuplicateOperationError("索引重建正在进行中，请稍后再试")
+            AdminFilesService._rebuild_in_progress = True
+
+        try:
+            # Phase 7: 记录向量库写操作指标
+            try:
+                runtime.metrics.vector_write_active = 1
+            except Exception:
+                pass
+
+            result = rebuild_all_indexes(progress_callback=log_progress)
+
+            if result["success"]:
+                logger.info(
+                    "索引重建完成: %d/%d 文件成功, %d chunks, 耗时 %.2fs",
+                    result.get("indexed", 0),
+                    result.get("total_files", 0),
+                    result.get("total_chunks", 0),
+                    result.get("elapsed_seconds", 0),
+                )
+                return {
+                    "success": True,
+                    "message": (
+                        f"索引重建完成，共处理 {result['total_files']} 个文件，"
+                        f"成功 {result['indexed']} 个，"
+                        f"共 {result['total_chunks']} 个片段"
+                    ),
+                    "total_files": result.get("total_files", 0),
+                    "indexed": result.get("indexed", 0),
+                    "failed": result.get("failed", 0),
+                    "total_chunks": result.get("total_chunks", 0),
+                    "elapsed_seconds": result.get("elapsed_seconds", 0.0),
+                    "task_id": result.get("task_id"),
+                    "errors": result.get("errors", []),
+                }
+            else:
+                error_msg = result.get("error", "重建失败")
+                logger.warning("索引重建失败: %s", error_msg)
+                return {
+                    "success": False,
+                    "message": error_msg,
+                    "total_files": result.get("total_files", 0),
+                    "indexed": result.get("indexed", 0),
+                    "failed": result.get("failed", 0),
+                    "total_chunks": result.get("total_chunks", 0),
+                    "elapsed_seconds": result.get("elapsed_seconds", 0.0),
+                    "task_id": result.get("task_id"),
+                    "errors": result.get("errors", []),
+                    "error": error_msg,
+                }
+        finally:
+            AdminFilesService._rebuild_in_progress = False
+            try:
+                runtime.metrics.vector_write_active = 0
+                runtime.metrics.record_write()
+            except Exception:
+                pass
+            runtime.write_lock.release()
 
     # ------------------------------------------------------------------
     # 索引状态

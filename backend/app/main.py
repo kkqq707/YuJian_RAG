@@ -118,35 +118,50 @@ async def lifespan(app: FastAPI):
     print(f"  path: {emb_path or '<未配置>'}")
     print(f"  status: {'OK' if emb_ok else 'FAILED'}")
 
-    # ---- 2. Chroma 向量库 ----
+    # ---- 数据库信息 (Phase 7) ----
+    logger.info("Database:")
+    from backend.app.database import get_db_type, _is_sqlite
+    db_type = get_db_type()
+    logger.info("  type: %s", db_type)
+    if _is_sqlite():
+        from sqlalchemy import text
+        from backend.app.database import engine as db_engine
+        try:
+            with db_engine.connect() as conn:
+                jm = conn.execute(text("PRAGMA journal_mode")).scalar()
+                bt = settings.SQLITE_BUSY_TIMEOUT_MS
+                logger.info("  journal_mode: %s", jm)
+                logger.info("  busy_timeout: %dms", bt)
+                logger.info("  status: [OK]")
+                print(f"Database:")
+                print(f"  type: SQLite")
+                print(f"  journal_mode: {jm}")
+                print(f"  busy_timeout: {bt}ms")
+        except Exception as e:
+            logger.warning("  status: [WARN] %s", str(e)[:100])
+
+    # ---- 2. Chroma 向量库 (Phase 7: 使用统一运行时) ----
     logger.info("Chroma:")
     chroma_collection = ""
     chroma_vectors = 0
     try:
-        from src.vector_store import get_chroma_client
+        from backend.app.vector_store_runtime import init_chroma_client
         from src.config import COLLECTION_NAME
 
         chroma_start = time.perf_counter()
-        client = get_chroma_client()
+        vs_runtime = init_chroma_client()
         chroma_elapsed = round(time.perf_counter() - chroma_start, 2)
 
-        try:
-            collection = client.get_collection(COLLECTION_NAME)
-            chroma_count = collection.count()
-        except Exception:
-            logger.info("  collection '%s' 不存在，自动创建...", COLLECTION_NAME)
-            collection = client.create_collection(
-                name=COLLECTION_NAME,
-                metadata={"hnsw:space": "cosine"},
-            )
-            chroma_count = 0
+        chroma_collection = vs_runtime.collection_name
+        if vs_runtime.collection:
+            chroma_vectors = vs_runtime.collection.count()
 
-        chroma_vectors = chroma_count
-        chroma_collection = COLLECTION_NAME
-
-        logger.info("  collection: %s", COLLECTION_NAME)
-        logger.info("  vectors:    %d", chroma_count)
+        logger.info("  collection: %s", chroma_collection)
+        logger.info("  vectors:    %d", chroma_vectors)
         logger.info("  状态:       [OK] 已连接 (%.2fs)", chroma_elapsed)
+
+        # 将运行时存入 app.state
+        app.state.vector_store_runtime = vs_runtime
     except Exception as e:
         logger.warning("  状态:       [WARN] 连接失败: %s", str(e).split(chr(10))[0][:150])
 
@@ -194,14 +209,26 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
-    # ---- 6. 数据库-Chroma 一致性检查 ----
+    # ---- 6. 数据库-Chroma 一致性检查 (Phase 7: 使用缓存运行时) ----
     try:
         from src.knowledge_manager import get_statistics as _gs
         kb_stats = _gs()
         db_chunks = kb_stats.get("total_chunks", 0)
+
+        # 使用缓存的 collection
+        chroma_count = 0
         try:
-            collection = client.get_collection(COLLECTION_NAME)
-            chroma_count = collection.count()
+            if vs_runtime and vs_runtime.collection:
+                chroma_count = vs_runtime.collection.count()
+            else:
+                from src.vector_store import get_chroma_client
+                from src.config import COLLECTION_NAME
+                client = get_chroma_client()
+                try:
+                    coll = client.get_collection(COLLECTION_NAME)
+                    chroma_count = coll.count()
+                except Exception:
+                    chroma_count = 0
         except Exception:
             chroma_count = 0
 

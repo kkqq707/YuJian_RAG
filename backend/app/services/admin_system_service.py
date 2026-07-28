@@ -131,30 +131,38 @@ class AdminSystemService:
             return {"status": "error", "detail": str(e).split("\n")[0][:100]}
 
     def _check_chroma(self) -> dict:
-        """检查 Chroma 向量库状态。
+        """检查 Chroma 向量库状态（Phase 7: 使用缓存运行时）。
 
-        必须使用与 RAG 完全相同的 get_chroma_client() 单例，
-        禁止创建新的 PersistentClient（会导致 SQLite 文件锁冲突）。
-
-        Chroma v0.6.x 兼容: 直接使用 get_or_create_collection() 检查，
-        不依赖 list_collections()（其返回类型在不同版本间不一致）。
+        优先使用 VectorStoreRuntime 中的缓存 client/collection，
+        避免重复创建 PersistentClient 导致 SQLite 文件锁冲突。
         """
         self._ensure_src_path()
         try:
-            from src.vector_store import get_chroma_client, get_or_create_collection
+            from backend.app.vector_store_runtime import get_vector_store_runtime
             from src.config import COLLECTION_NAME
 
-            client = get_chroma_client()
+            runtime = get_vector_store_runtime()
+            if runtime.is_initialized() and runtime.collection is not None:
+                count = runtime.collection.count()
+                logger.info(
+                    "[CHROMA HEALTH] connected=True collection=%s count=%s (cached)",
+                    COLLECTION_NAME, count,
+                )
+                return {
+                    "status": "ok",
+                    "detail": f"已就绪，{count} 个向量",
+                }
 
-            # 使用 get_or_create 确保 collection 存在
+            # 回退到直接访问
+            from src.vector_store import get_chroma_client, get_or_create_collection
+            client = get_chroma_client()
             collection = get_or_create_collection()
             count = collection.count()
 
             logger.info(
-                "[CHROMA HEALTH] connected=True collection=%s count=%s",
+                "[CHROMA HEALTH] connected=True collection=%s count=%s (fallback)",
                 COLLECTION_NAME, count,
             )
-
             return {
                 "status": "ok",
                 "detail": f"已就绪，{count} 个向量",
@@ -167,15 +175,35 @@ class AdminSystemService:
             return {"status": "error", "detail": str(e).split("\n")[0][:100]}
 
     def _check_sqlite(self) -> dict:
-        """检查 SQLite 数据库状态。"""
+        """检查 SQLite 数据库状态（Phase 7: 增强版）。"""
         try:
-            # 尝试执行简单查询验证数据库可用
-            from backend.app.database import engine
+            from backend.app.database import engine, get_db_type, _is_sqlite
+            from sqlalchemy import text
+
+            db_type = get_db_type()
+            result = {
+                "status": "ok",
+                "detail": "数据库连接正常",
+                "type": db_type,
+            }
+
+            if _is_sqlite():
+                with engine.connect() as conn:
+                    jm = conn.execute(text("PRAGMA journal_mode")).scalar()
+                    result["journal_mode"] = jm
+                    result["busy_timeout_ms"] = self.settings.SQLITE_BUSY_TIMEOUT_MS
+
+            # 执行简单查询验证
             with engine.connect() as conn:
-                conn.execute(select(1))
-            return {"status": "ok", "detail": "数据库连接正常"}
+                conn.execute(text("SELECT 1"))
+
+            return result
         except Exception as e:
-            return {"status": "error", "detail": str(e).split("\n")[0][:100]}
+            return {
+                "status": "error",
+                "detail": str(e).split("\n")[0][:100],
+                "type": "unknown",
+            }
 
     def _get_stats(self) -> dict:
         """收集系统统计信息。"""

@@ -225,6 +225,76 @@ def register_exception_handlers(app):
     except ImportError:
         pass  # InferenceRuntime 模块尚未加载时跳过
 
+    # ---- Phase 7: 数据库与向量库异常处理器 ----
+
+    try:
+        from backend.app.db_retry import DatabaseBusyError
+
+        @app.exception_handler(DatabaseBusyError)
+        async def database_busy_handler(
+            request: Request, exc: DatabaseBusyError,
+        ) -> JSONResponse:
+            request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+            logger.warning("数据库繁忙 | request_id=%s", request_id)
+            return _build_error_response(
+                code="DATABASE_BUSY",
+                message=exc.message,
+                status_code=503,
+                request_id=request_id,
+            )
+
+    except ImportError:
+        pass
+
+    try:
+        from backend.app.vector_store_runtime import (
+            VectorStoreBusyError,
+            VectorStoreOperationError,
+            DuplicateOperationError,
+        )
+
+        @app.exception_handler(VectorStoreBusyError)
+        async def vector_store_busy_handler(
+            request: Request, exc: VectorStoreBusyError,
+        ) -> JSONResponse:
+            request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+            logger.warning("向量库繁忙 | request_id=%s", request_id)
+            return _build_error_response(
+                code="VECTOR_STORE_BUSY",
+                message=exc.message,
+                status_code=503,
+                request_id=request_id,
+            )
+
+        @app.exception_handler(VectorStoreOperationError)
+        async def vector_store_operation_error_handler(
+            request: Request, exc: VectorStoreOperationError,
+        ) -> JSONResponse:
+            request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+            logger.error("向量库操作失败 | request_id=%s", request_id)
+            return _build_error_response(
+                code="VECTOR_STORE_OPERATION_FAILED",
+                message=exc.message,
+                status_code=503,
+                request_id=request_id,
+            )
+
+        @app.exception_handler(DuplicateOperationError)
+        async def duplicate_operation_handler(
+            request: Request, exc: DuplicateOperationError,
+        ) -> JSONResponse:
+            request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+            logger.info("重复操作 | request_id=%s", request_id)
+            return _build_error_response(
+                code="DUPLICATE_OPERATION",
+                message=exc.message,
+                status_code=409,
+                request_id=request_id,
+            )
+
+    except ImportError:
+        pass
+
     @app.exception_handler(Exception)
     async def generic_exception_handler(
         request: Request, exc: Exception

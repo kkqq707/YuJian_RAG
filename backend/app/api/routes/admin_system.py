@@ -71,7 +71,7 @@ def _get_client_info(request: Request) -> tuple:
 # ---------------------------------------------------------------------------
 
 
-@router.get("", response_model=AdminSystemStatusResponse, summary="获取完整系统状态")
+@router.get("", summary="获取完整系统状态")
 async def system_status(
     request: Request,
     current_user: User = Depends(require_admin),
@@ -83,6 +83,8 @@ async def system_status(
     - 各组件状态: Embedding / DeepSeek / Chroma / SQLite
     - 统计信息: 文件数、用户数、Chunk 数、向量数等
     - API 版本
+    - 数据库运行时信息: journal_mode、busy_timeout
+    - 向量库锁指标
 
     不返回 API Key、绝对路径、环境变量。
 
@@ -90,7 +92,50 @@ async def system_status(
     """
     service = AdminSystemService(db)
     result = service.get_full_status()
-    return AdminSystemStatusResponse(**result)
+
+    # ------------------------------------------------------------------
+    # 增强: 数据库运行时信息
+    # ------------------------------------------------------------------
+    database_info: dict = {}
+    try:
+        from backend.app.database import engine
+        from sqlalchemy import text
+        from backend.app.config import get_settings
+
+        settings = get_settings()
+        db_url = settings.DATABASE_URL.lower()
+
+        if "sqlite" in db_url:
+            database_info["type"] = "sqlite"
+            with engine.connect() as conn:
+                database_info["journal_mode"] = conn.execute(
+                    text("PRAGMA journal_mode")
+                ).scalar()
+            database_info["busy_timeout_ms"] = settings.SQLITE_BUSY_TIMEOUT_MS
+        elif "postgresql" in db_url:
+            database_info["type"] = "postgresql"
+        else:
+            database_info["type"] = "other"
+    except Exception:
+        pass
+
+    # ------------------------------------------------------------------
+    # 增强: 向量库锁指标
+    # ------------------------------------------------------------------
+    vector_store_metrics = None
+    try:
+        from backend.app.vector_store_runtime import get_vector_store_runtime
+
+        vs_runtime = get_vector_store_runtime()
+        if vs_runtime.is_initialized():
+            vector_store_metrics = vs_runtime.metrics.snapshot()
+    except Exception:
+        pass
+
+    result["database_info"] = database_info
+    result["vector_store_metrics"] = vector_store_metrics
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +175,7 @@ async def audit_logs(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/health", response_model=HealthCheckResponse, summary="系统健康检查")
+@router.get("/health", summary="系统健康检查")
 async def health_check(
     request: Request,
     current_user: User = Depends(require_admin),
@@ -139,6 +184,7 @@ async def health_check(
     """系统健康检查。
 
     检查 Backend API、Database、Chroma、LLM、Embedding 状态。
+    包含数据库类型和 journal mode 信息。
 
     禁止暴露异常堆栈和 API Key。
 
@@ -146,7 +192,32 @@ async def health_check(
     """
     service = AdminSystemService(db)
     result = service.get_health_check()
-    return HealthCheckResponse(**result)
+
+    # ------------------------------------------------------------------
+    # 增强: 数据库类型与 journal_mode（仅 SQLite）
+    # ------------------------------------------------------------------
+    try:
+        from backend.app.database import engine
+        from sqlalchemy import text
+        from backend.app.config import get_settings
+
+        settings = get_settings()
+        db_url = settings.DATABASE_URL.lower()
+
+        if "sqlite" in db_url:
+            result["database_type"] = "sqlite"
+            with engine.connect() as conn:
+                result["database_journal_mode"] = conn.execute(
+                    text("PRAGMA journal_mode")
+                ).scalar()
+        elif "postgresql" in db_url:
+            result["database_type"] = "postgresql"
+        else:
+            result["database_type"] = "other"
+    except Exception:
+        result.setdefault("database_type", "unknown")
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +551,7 @@ async def inference_metrics(
     """获取推理运行时指标（进程内，重启归零）。
 
     包含: embedding_active, embedding_waiting, reranker_active, reranker_waiting,
-          rag_active, 累计计数等。
+          rag_active, 累计计数，以及向量库运行指标。
 
     需要管理员权限。
     """
@@ -496,10 +567,21 @@ async def inference_metrics(
     metrics = runtime.metrics.snapshot()
     metrics["active_user_count"] = runtime.get_active_user_count()
 
+    # Phase 7: 附加向量库运行指标
+    vector_metrics = None
+    try:
+        from backend.app.vector_store_runtime import get_vector_store_runtime
+        vs_runtime = get_vector_store_runtime()
+        if vs_runtime.is_initialized():
+            vector_metrics = vs_runtime.metrics.snapshot()
+    except Exception:
+        pass
+
     return {
         "success": True,
         "available": True,
         "metrics": metrics,
+        "vector_store_metrics": vector_metrics,
     }
 
 
