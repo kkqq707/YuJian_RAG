@@ -159,88 +159,80 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 /* ============================================================
- * LoginView — 主布局样式
+ * LoginView — 主布局样式（响应式改造第 2 阶段）
+ *
+ * 使用 Phase 1 统一断点体系：
+ *   Mobile:  < 768px
+ *   Tablet:  768px ~ 1199px
+ *   Desktop: >= 1200px
  * ============================================================ */
 
 .login-page {
   position: relative;
-  min-height: 100vh;
+  min-height: var(--app-height);
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  /* 允许纵向滚动，解决移动端软键盘弹出后内容被遮挡的问题 */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-/* ---- 主布局：桌面端左右分栏 ---- */
+/* ============================================================
+ * 桌面端 (>=1200px)：左右双栏 Grid 布局
+ * ============================================================ */
+
 .login-layout {
   position: relative;
   z-index: 2;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
   align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 1280px;
-  padding: 48px 56px;
-  gap: 0;
+  justify-items: center;
+  width: min(1200px, calc(100% - 48px));
+  padding: clamp(32px, 5vh, 56px) 0;
+  gap: clamp(24px, 4vw, 56px);
 }
 
-/* 左侧品牌区域 — 45% */
+/* 左侧品牌区域 */
 .login-layout__brand {
-  flex: 0 0 45%;
-  max-width: 45%;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-right: 56px;
 }
 
-/* 右侧登录卡片 — 55% */
+/* 右侧登录卡片 */
 .login-layout__card {
-  flex: 0 0 55%;
-  max-width: 55%;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 /* ============================================================
- * 响应式 — 平板及以下：上下布局
+ * 平板端 (768px ~ 1199px)：压缩双栏
+ * 768-900px 区间双栏可能拥挤，切换为居中单栏
+ * 使用容器查询在不引入全局断点的前提下处理内部布局
  * ============================================================ */
 
-@media (max-width: 900px) {
+@media (min-width: 768px) and (max-width: 1199px) {
   .login-layout {
-    flex-direction: column;
-    padding: 32px 24px;
-    gap: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+    width: min(960px, calc(100% - 32px));
+    padding: clamp(24px, 4vh, 40px) 0;
+    gap: clamp(16px, 3vw, 36px);
   }
+}
 
-  .login-layout__brand {
-    flex: none;
-    max-width: 100%;
-    width: 100%;
-    padding-right: 0;
-    padding-bottom: 8px;
-  }
-
-  .login-layout__card {
-    flex: none;
-    max-width: 100%;
-    width: 100%;
+/* 平板窄区间优化：当容器宽度不足时切换单栏 */
+@container (max-width: 700px) {
+  .login-layout {
+    grid-template-columns: 1fr;
     max-width: 450px;
-  }
-}
-
-/* 小屏手机 */
-@media (max-width: 480px) {
-  .login-layout {
-    padding: 20px 16px;
-  }
-}
-
-/* 矮屏幕 */
-@media (max-height: 700px) {
-  .login-layout {
-    padding: 20px 40px;
+    margin: 0 auto;
+    gap: 8px;
   }
 
   .login-layout__brand {
@@ -248,10 +240,60 @@ onMounted(() => {
   }
 }
 
-/* 大屏幕优化 */
+/* ============================================================
+ * 移动端 (<768px)：单栏布局，含 safe-area 适配
+ * ============================================================ */
+
+@media (max-width: 767px) {
+  .login-page {
+    align-items: flex-start;
+    padding:
+      calc(var(--page-padding-mobile) + var(--safe-area-top))
+      max(var(--page-padding-mobile), var(--safe-area-right))
+      calc(var(--page-padding-mobile) + var(--safe-area-bottom) + 20px)
+      max(var(--page-padding-mobile), var(--safe-area-left));
+  }
+
+  .login-layout {
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-width: 420px;
+    padding: 0;
+    gap: 4px;
+  }
+
+  .login-layout__brand {
+    padding-bottom: 0;
+    width: 100%;
+  }
+
+  .login-layout__card {
+    width: 100%;
+  }
+}
+
+/* ============================================================
+ * 矮屏幕适配（高度不足时减少间距）
+ * ============================================================ */
+
+@media (max-height: 700px) {
+  .login-layout {
+    padding: 16px 0;
+  }
+
+  .login-layout__brand {
+    padding-bottom: 0;
+  }
+}
+
+/* ============================================================
+ * 大屏幕优化 (>=1600px)
+ * ============================================================ */
+
 @media (min-width: 1600px) {
   .login-layout {
-    max-width: 1440px;
+    width: min(1400px, calc(100% - 64px));
+    grid-template-columns: minmax(0, 1fr) minmax(380px, 480px);
   }
 }
 </style>

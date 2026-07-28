@@ -9,7 +9,8 @@
 
 <style lang="scss" scoped>
 .auth-layout {
-  min-height: 100vh;
+  min-height: var(--app-height);
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;

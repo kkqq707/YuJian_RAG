@@ -87,6 +87,8 @@ let mouseActive = false
 let reducedMotion = false
 let width = 0
 let height = 0
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+let pageVisible = true
 
 // ---- 粒子数量计算 ----
 function getParticleCount(): number {
@@ -95,9 +97,12 @@ function getParticleCount(): number {
   const area = w * h
   const lowPerf = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4
   const isMobile = w < 768
+  const isTablet = w >= 768 && w < 1200
 
   if (reducedMotion) return 15
-  if (lowPerf || isMobile) return 60
+  if (lowPerf) return isMobile ? 30 : isTablet ? 45 : 60
+  if (isMobile) return 40
+  if (isTablet) return 65
   if (area > 2500000) return 120
   if (area > 1500000) return 100
   if (area > 1000000) return 90
@@ -284,23 +289,55 @@ function animate(): void {
   animationId = requestAnimationFrame(animate)
 }
 
-// ---- 尺寸调整 ----
+// ---- 尺寸调整（防抖） ----
 function resize(): void {
-  const canvas = canvasRef.value
-  if (!canvas) return
+  // 清除上一次的定时器，避免频繁重建粒子
+  if (resizeTimer) {
+    clearTimeout(resizeTimer)
+  }
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2)
-  width = window.innerWidth
-  height = window.innerHeight
-  canvas.width = width * dpr
-  canvas.height = height * dpr
-  canvas.style.width = `${width}px`
-  canvas.style.height = `${height}px`
+  resizeTimer = setTimeout(() => {
+    const canvas = canvasRef.value
+    if (!canvas) return
 
-  const ctx = canvas.getContext('2d')
-  if (ctx) {
-    ctx.scale(dpr, dpr)
-    initParticles()
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const newWidth = window.innerWidth
+    const newHeight = window.innerHeight
+
+    // 尺寸没变化则跳过
+    if (newWidth === width && newHeight === height) return
+
+    width = newWidth
+    height = newHeight
+    canvas.width = width * dpr
+    canvas.height = height * dpr
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
+
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.scale(dpr, dpr)
+      initParticles()
+    }
+
+    resizeTimer = null
+  }, 150)
+}
+
+// ---- 页面可见性 ----
+function onVisibilityChange(): void {
+  pageVisible = document.visibilityState === 'visible'
+  if (!pageVisible) {
+    // 页面隐藏时暂停动画
+    if (animationId) {
+      cancelAnimationFrame(animationId)
+      animationId = 0
+    }
+  } else {
+    // 页面重新可见时恢复动画
+    if (!animationId) {
+      animate()
+    }
   }
 }
 
@@ -330,13 +367,19 @@ onMounted(() => {
   window.addEventListener('resize', resize)
   window.addEventListener('mousemove', onMouseMove, { passive: true })
   window.addEventListener('mouseleave', onMouseLeave)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(animationId)
+  if (resizeTimer) {
+    clearTimeout(resizeTimer)
+    resizeTimer = null
+  }
   window.removeEventListener('resize', resize)
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('mouseleave', onMouseLeave)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 </script>
 

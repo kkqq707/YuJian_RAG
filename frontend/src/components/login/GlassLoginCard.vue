@@ -38,10 +38,13 @@
         <el-form-item prop="username">
           <el-input
             v-model="form.username"
+            name="username"
             placeholder="用户名 / 邮箱"
             size="large"
-            auto-complete="username"
+            autocomplete="username"
+            aria-label="用户名"
             @keyup.enter="emit('login')"
+            @focus="onInputFocus"
           >
             <template #prefix>
               <User :size="18" class="input-icon" />
@@ -54,10 +57,13 @@
           <el-input
             v-model="form.password"
             :type="showPassword ? 'text' : 'password'"
+            name="password"
             placeholder="密码"
             size="large"
-            auto-complete="current-password"
+            autocomplete="current-password"
+            aria-label="密码"
             @keyup.enter="emit('login')"
+            @focus="onInputFocus"
           >
             <template #prefix>
               <Lock :size="18" class="input-icon" />
@@ -66,7 +72,7 @@
               <button
                 type="button"
                 class="pwd-toggle"
-                tabindex="-1"
+                :aria-label="showPassword ? '隐藏密码' : '显示密码'"
                 @click="showPassword = !showPassword"
               >
                 <Eye v-if="!showPassword" :size="18" />
@@ -191,6 +197,25 @@ const rules = {
 const canSubmit = computed(() => {
   return form.value.username.trim() !== '' && form.value.password !== '' && !props.loading
 })
+
+// ---- 输入框获得焦点时滚动到可见区域（移动端软键盘适配） ----
+function onInputFocus(e: FocusEvent): void {
+  const target = e.target as HTMLElement
+  if (!target) return
+
+  // 仅在小屏设备上启用（<= 767px），避免桌面端不必要的滚动
+  const isSmallScreen = window.matchMedia('(max-width: 767px)').matches
+  if (!isSmallScreen) return
+
+  // 延迟执行以等待软键盘弹出
+  setTimeout(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView({
+      block: 'center',
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    })
+  }, 300)
+}
 
 // ---- 点击按钮（含扩散波纹效果） ----
 function handleClick(e: MouseEvent) {
@@ -459,6 +484,9 @@ defineExpose({ formRef, form })
   padding: 4px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
   transition: color 0.2s ease;
 
   &:hover {
@@ -675,28 +703,96 @@ defineExpose({ formRef, form })
 }
 
 /* ============================================================
- * 响应式
+ * 响应式 — 使用统一断点体系
  * ============================================================ */
 
-@media (max-width: 900px) {
-  .card__body {
-    padding: 40px 34px;
-  }
-}
-
-@media (max-width: 480px) {
+/* 平板：适度缩小内边距 */
+@media (min-width: 768px) and (max-width: 1199px) {
   .glass-login-card {
-    border-radius: 20px;
+    max-width: 420px;
   }
+
   .card__body {
-    padding: 30px 24px;
+    padding: 36px 32px;
   }
+
   .card__heading {
     font-size: 24px;
   }
+
   .card__subheading {
     font-size: 13px;
     margin-bottom: 24px;
+  }
+
+  .card__btn {
+    height: 48px;
+    font-size: 15px;
+    letter-spacing: 3px;
+  }
+}
+
+/* 移动端：单栏布局，卡片全宽 */
+@media (max-width: 767px) {
+  .glass-login-card {
+    border-radius: 18px;
+    max-width: 100%;
+  }
+
+  .card__body {
+    padding: clamp(20px, 5vw, 28px) clamp(16px, 4vw, 24px);
+  }
+
+  .card__heading {
+    font-size: clamp(20px, 5vw, 22px);
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .card__subheading {
+    font-size: 12px;
+    margin-bottom: 20px;
+  }
+
+  .card__form {
+    :deep(.el-form-item) {
+      margin-bottom: 14px;
+    }
+  }
+
+  .card__btn {
+    height: 48px;
+    font-size: 15px;
+    letter-spacing: 3px;
+    border-radius: 10px;
+  }
+
+  .card__options {
+    margin-bottom: 20px;
+  }
+
+  .card__footer {
+    margin-top: 22px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .card__error {
+    font-size: 12px;
+    padding: 8px 12px;
+    margin-bottom: 16px;
+    word-break: break-word;
+  }
+
+  .remember-check {
+    :deep(.el-checkbox__label) {
+      font-size: 12px;
+    }
+  }
+
+  /* 移动端边缘发光减弱 */
+  .card__edge-glow {
+    opacity: 0.3;
   }
 }
 </style>

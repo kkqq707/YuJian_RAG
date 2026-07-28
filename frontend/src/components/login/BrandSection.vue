@@ -154,32 +154,34 @@ function dotStyle(i: number): Record<string, string> {
 }
 
 /* ============================================================
- * 响应式
+ * 响应式 — 使用统一断点体系
  * ============================================================ */
 
-@media (max-width: 900px) {
+/* 平板：居中品牌内容，缩小字号 */
+@media (min-width: 768px) and (max-width: 1199px) {
   .brand-section {
     text-align: center;
   }
 
   .brand-section__name {
-    font-size: 32px;
+    font-size: clamp(26px, 5vw, 36px);
     letter-spacing: 2px;
+    margin-bottom: 8px;
   }
 
   .brand-section__title {
-    font-size: 14px;
-    margin-bottom: 20px;
+    font-size: clamp(12px, 2vw, 15px);
+    margin-bottom: 18px;
     letter-spacing: 2px;
   }
 
   .brand-section__divider {
-    margin: 0 auto 20px;
+    margin: 0 auto 18px;
   }
 
   .brand-section__tagline {
-    margin-bottom: 20px;
-    font-size: 13px;
+    margin-bottom: 16px;
+    font-size: 12px;
   }
 
   .brand-bg-dot {
@@ -187,12 +189,35 @@ function dotStyle(i: number): Record<string, string> {
   }
 }
 
-@media (max-width: 480px) {
+/* 移动端：精简品牌展示，仅保留品牌名和简短说明 */
+@media (max-width: 767px) {
+  .brand-section {
+    text-align: center;
+  }
+
   .brand-section__name {
-    font-size: 26px;
+    font-size: clamp(22px, 7vw, 28px);
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+
+  .brand-section__title {
+    font-size: clamp(11px, 3.5vw, 14px);
+    margin-bottom: 12px;
+    letter-spacing: 1.5px;
+  }
+
+  .brand-section__divider {
+    width: 40px;
+    margin: 0 auto 12px;
   }
 
   .brand-section__tagline {
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .brand-bg-dot {
     display: none;
   }
 }

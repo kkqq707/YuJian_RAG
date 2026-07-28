@@ -393,10 +393,10 @@
   }
 }
 
-/* 移动端：降低光球强度 */
-@media (max-width: 768px) {
+/* 平板：适度降低光球强度和动画密度 */
+@media (min-width: 768px) and (max-width: 1199px) {
   .ai-bg__orb {
-    filter: blur(100px);
+    filter: blur(110px);
   }
 
   .ai-bg__orb--deepblue,
@@ -404,7 +404,49 @@
   .ai-bg__orb--magenta,
   .ai-bg__orb--cyan,
   .ai-bg__orb--teal {
-    opacity: 0.25;
+    opacity: 0.3;
+  }
+
+  .ai-bg__grid {
+    opacity: 0.18;
+  }
+
+  .ai-bg__gradient {
+    animation-duration: 32s;
+  }
+
+  .ai-bg__gradient-secondary {
+    animation-duration: 28s;
+  }
+}
+
+/* 移动端：大幅降低光球强度，减少动画消耗 */
+@media (max-width: 767px) {
+  .ai-bg__orb {
+    filter: blur(80px);
+  }
+
+  .ai-bg__orb--deepblue,
+  .ai-bg__orb--purple,
+  .ai-bg__orb--magenta,
+  .ai-bg__orb--cyan,
+  .ai-bg__orb--teal {
+    opacity: 0.2;
+  }
+
+  .ai-bg__grid {
+    opacity: 0.1;
+    background-size: 40px 40px;
+  }
+
+  /* 移动端减慢渐变动画周期 */
+  .ai-bg__gradient {
+    animation-duration: 40s;
+  }
+
+  .ai-bg__gradient-secondary {
+    animation-duration: 36s;
+    opacity: 0.35;
   }
 }
 </style>

@@ -140,12 +140,47 @@ const features: Feature[] = [
 }
 
 /* ============================================================
- * 响应式
+ * 响应式 — 使用统一断点体系
  * ============================================================ */
 
-@media (max-width: 900px) {
+/* 平板：压缩间距但保留功能列表 */
+@media (min-width: 768px) and (max-width: 1199px) {
   .feature-list {
-    display: none; // 平板及以下隐藏详细描述
+    gap: 12px;
+  }
+
+  .feature-item {
+    gap: 10px;
+  }
+
+  .feature-item__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .feature-item__title {
+    font-size: 12px;
+  }
+
+  .feature-item__desc {
+    font-size: 11px;
+  }
+}
+
+/* 移动端：隐藏功能列表，精简品牌区域 */
+@media (max-width: 767px) {
+  .feature-list {
+    display: none;
+  }
+}
+
+/* 低性能设备：关闭动画 */
+@media (prefers-reduced-motion: reduce) {
+  .feature-item {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 </style>

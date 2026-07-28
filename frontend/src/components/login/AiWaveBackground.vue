@@ -119,6 +119,8 @@ let dotParticles: DotParticle[] = []
 let dotsWidth = 0
 let dotsHeight = 0
 let reducedMotion = false
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+let pageVisible = true
 
 function initDotParticles(): void {
   const count = reducedMotion ? 10 : 50
@@ -208,23 +210,52 @@ function animateDots(): void {
 }
 
 function resizeDots(): void {
-  const canvas = dotsCanvasRef.value
-  if (!canvas) return
+  // 清除上一次的定时器，避免频繁重建
+  if (resizeTimer) {
+    clearTimeout(resizeTimer)
+  }
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2)
-  const waveHeight = window.innerHeight * 0.22
-  dotsWidth = window.innerWidth
-  dotsHeight = waveHeight
+  resizeTimer = setTimeout(() => {
+    const canvas = dotsCanvasRef.value
+    if (!canvas) return
 
-  canvas.width = dotsWidth * dpr
-  canvas.height = dotsHeight * dpr
-  canvas.style.width = `${dotsWidth}px`
-  canvas.style.height = `${dotsHeight}px`
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const newWidth = window.innerWidth
+    const waveHeight = window.innerHeight * 0.22
 
-  const ctx = canvas.getContext('2d')
-  if (ctx) {
-    ctx.scale(dpr, dpr)
-    initDotParticles()
+    // 尺寸没变则跳过
+    if (newWidth === dotsWidth && waveHeight === dotsHeight) return
+
+    dotsWidth = newWidth
+    dotsHeight = waveHeight
+
+    canvas.width = dotsWidth * dpr
+    canvas.height = dotsHeight * dpr
+    canvas.style.width = `${dotsWidth}px`
+    canvas.style.height = `${dotsHeight}px`
+
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.scale(dpr, dpr)
+      initDotParticles()
+    }
+
+    resizeTimer = null
+  }, 150)
+}
+
+// ---- 页面可见性 ----
+function onVisibilityChange(): void {
+  pageVisible = document.visibilityState === 'visible'
+  if (!pageVisible) {
+    if (dotsAnimId) {
+      cancelAnimationFrame(dotsAnimId)
+      dotsAnimId = 0
+    }
+  } else {
+    if (!dotsAnimId) {
+      animateDots()
+    }
   }
 }
 
@@ -239,11 +270,17 @@ onMounted(() => {
   resizeDots()
   animateDots()
   window.addEventListener('resize', resizeDots)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(dotsAnimId)
+  if (resizeTimer) {
+    clearTimeout(resizeTimer)
+    resizeTimer = null
+  }
   window.removeEventListener('resize', resizeDots)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 </script>
 
@@ -420,11 +457,31 @@ onBeforeUnmount(() => {
   }
 }
 
-/* 移动端：降低波浪高度 */
-@media (max-width: 768px) {
+/* 平板：适度降低波浪高度和动画速度 */
+@media (min-width: 768px) and (max-width: 1199px) {
   .ai-wave {
-    height: 16vh;
-    min-height: 100px;
+    height: 18vh;
+    min-height: 120px;
   }
+
+  .ai-wave__svg--deepblue { animation-duration: 18s; }
+  .ai-wave__svg--purple { animation-duration: 15s; }
+  .ai-wave__svg--magenta { animation-duration: 13s; }
+  .ai-wave__svg--cyan { animation-duration: 12s; }
+  .ai-wave__svg--teal { animation-duration: 11s; }
+}
+
+/* 移动端：大幅降低波浪高度 */
+@media (max-width: 767px) {
+  .ai-wave {
+    height: 14vh;
+    min-height: 90px;
+  }
+
+  .ai-wave__svg--deepblue { animation-duration: 24s; }
+  .ai-wave__svg--purple { animation-duration: 20s; }
+  .ai-wave__svg--magenta { animation-duration: 18s; }
+  .ai-wave__svg--cyan { animation-duration: 16s; }
+  .ai-wave__svg--teal { animation-duration: 14s; }
 }
 </style>
