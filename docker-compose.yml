@@ -46,8 +46,10 @@ services:
       - ANONYMIZED_TELEMETRY=false
 
     volumes:
-      # 模型持久化（Embedding + Reranker）— 只读
-      - ./models:/app/models:ro
+      # 模型持久化（Embedding + Reranker）
+      # 默认：模型由 Dockerfile COPY backend/models/ → /app/models/ 打包进镜像
+      # 如需热更新模型（不重建镜像），取消下一行注释并将模型放入宿主 ./models/:
+      # - ./models:/app/models:ro
       # 数据库 + Chroma向量库 + 日志 + 备份（named volume）
       - yujian_storage:/app/storage
       # 上传文件（named volume）

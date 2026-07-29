@@ -41,6 +41,10 @@ RUN pip install --no-cache-dir cryptography
 COPY backend/ /app/backend/
 # RAG 引擎代码（src/ 在项目根目录，backend 通过 from src.xxx 引用）
 COPY src/ /app/src/
+# ---- 复制本地模型（Embedding + Reranker）到 /app/models/ ----
+# 模型文件在 backend/models/ 目录下，打包进镜像实现企业离线部署
+# bind mount ./models:/app/models:ro 可作为可选热更新覆盖
+COPY backend/models/ /app/models/
 
 # ---- 创建运行时目录 ----
 RUN mkdir -p /app/storage/logs /app/storage/backup /app/storage/chroma_db /app/data/uploads
