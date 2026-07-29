@@ -144,6 +144,7 @@ async def lifespan(app: FastAPI):
     logger.info("Chroma:")
     chroma_collection = ""
     chroma_vectors = 0
+    vs_runtime = None  # 在 try 外预声明，避免后续引用导致 NameError
     try:
         from backend.app.vector_store_runtime import init_chroma_client
         from src.config import COLLECTION_NAME

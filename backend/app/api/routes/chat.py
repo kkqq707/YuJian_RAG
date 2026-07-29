@@ -415,6 +415,11 @@ async def send_message(
     t0 = time.perf_counter()
     runtime = getattr(request.app.state, "inference_runtime", None)
 
+    # 性能细分（不同路径分别提取，避免 UnboundLocalError）
+    emb_s: float = 0.0
+    ret_s: float = 0.0
+    llm_s: float = 0.0
+
     if runtime is not None:
         set_async_rag_runtime(runtime)
         settings = __import__('backend.app.config', fromlist=['get_settings']).get_settings()
@@ -444,6 +449,10 @@ async def send_message(
             )
             latency = round(time.perf_counter() - t0, 3)
             result.latency_seconds = latency
+            # 从异步适配器中提取性能细分
+            emb_s = raw.get("embedding_ms", 0) / 1000.0
+            ret_s = raw.get("vector_search_ms", 0) / 1000.0
+            llm_s = raw.get("llm_ms", 0) / 1000.0
         finally:
             runtime.release_user_slot(user_id_str)
             runtime.metrics.dec_active("rag_active")
@@ -452,6 +461,11 @@ async def send_message(
         adapter = get_rag_adapter()
         result = adapter.ask_user(enhanced_question)
         latency = round(time.perf_counter() - t0, 3)
+        # 从同步适配器中提取性能细分
+        rag_raw = getattr(adapter, '_last_raw_result', None) or {}
+        emb_s = rag_raw.get("embedding_seconds", 0)
+        ret_s = rag_raw.get("retrieval_seconds", 0)
+        llm_s = rag_raw.get("llm_seconds", 0)
 
     # 保存助手消息
     assistant_msg = chat_repository.create_message(
@@ -470,12 +484,6 @@ async def send_message(
             title += "..."
         session.title = title
     db.flush()
-
-    # 获取性能细分（从 RAGService 内部计时）
-    rag_raw = getattr(adapter, '_last_raw_result', None)
-    emb_s = rag_raw.get("embedding_seconds", 0) if rag_raw else 0
-    ret_s = rag_raw.get("retrieval_seconds", 0) if rag_raw else 0
-    llm_s = rag_raw.get("llm_seconds", 0) if rag_raw else 0
 
     logger.info(
         "send_message | user=%s | session_id=%d | question_len=%d | "

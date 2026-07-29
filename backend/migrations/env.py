@@ -36,6 +36,9 @@ from backend.app.models.refresh_token import RefreshToken  # noqa: E402, F401
 from backend.app.models.system_config import SystemConfig  # noqa: E402, F401
 from backend.app.models.llm_config import LLMConfig  # noqa: E402, F401
 from backend.app.models.system_setting import SystemSetting  # noqa: E402, F401
+from backend.app.models.chat import ChatSession, ChatMessage  # noqa: E402, F401
+from backend.app.models.rag_config import RAGConfig  # noqa: E402, F401
+from backend.app.models.document_task import DocumentTask  # noqa: E402, F401
 
 target_metadata = Base.metadata
 
