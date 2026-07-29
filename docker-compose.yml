@@ -1,5 +1,6 @@
 # ============================================================
 # 企业智库 AI — Docker Compose 一键部署
+# Phase 10: 生产加固 — 资源约束、日志轮转、健康检查
 # ============================================================
 #
 # ⛔ 严禁: docker compose down -v （删除 volume 导致数据永久丢失）
@@ -10,7 +11,12 @@
 # 启动:  docker compose up -d
 # 停止:  docker compose stop    ← 安全，保留数据
 # 重建:  docker compose build && docker compose up -d
-# 升级:  bash scripts/backup.sh && docker compose build && docker compose up -d
+# 升级:  bash scripts/backup.sh && bash scripts/deploy.sh
+#
+# 资源分配 (2 vCPU / 4GB RAM / 4GB Swap):
+#   backend:  CPU 1.8 max,  Memory 3GB max / 1GB reserve
+#   frontend: CPU 0.5 max,  Memory 256MB max / 64MB reserve
+#   Docker + OS 保留: ~0.2 CPU + ~744MB RAM
 #
 # 数据持久化:
 #   - models              → Embedding / Reranker 本地模型（bind mount 只读）
@@ -19,8 +25,6 @@
 #
 # 使用 Docker named volume 确保数据持久化。
 # VOLUME 不可删除！升级/重建容器时数据保留。
-# 备份: docker run --rm -v yujian_storage:/data -v $(pwd)/backup:/backup alpine tar czf /backup/storage_backup.tar.gz -C /data .
-# 容器重启后以上数据不丢失。
 # ============================================================
 
 services:
@@ -31,29 +35,63 @@ services:
       dockerfile: backend/Dockerfile
     image: yujian-rag-backend:latest
     container_name: yujian-backend
-    restart: always
+    restart: unless-stopped
+
     ports:
       - "8000:8000"
+
     env_file:
       - .env.production
     environment:
       - ANONYMIZED_TELEMETRY=false
+
     volumes:
-      # 模型持久化（Embedding + Reranker）
+      # 模型持久化（Embedding + Reranker）— 只读
       - ./models:/app/models:ro
-      # 数据库 + Chroma向量库 + 日志 + 备份（named volume - 旧数据所在）
+      # 数据库 + Chroma向量库 + 日志 + 备份（named volume）
       - yujian_storage:/app/storage
-      # 上传文件（named volume - 内部有 uploads/ 子目录）
+      # 上传文件（named volume）
       - yujian_data:/app/data
+
+    # 临时目录使用 tmpfs（避免磁盘 I/O 瓶颈）
+    tmpfs:
+      - /tmp:exec,size=256M
+
     networks:
       - yujian-net
-    # 等待模型和存储就绪后启动
+
+    # ---- 资源约束 (2 vCPU / 4GB RAM) ----
+    # Docker Compose v2 原生语法（非 Swarm mode）
+    mem_limit: 3g
+    mem_reservation: 1g
+    cpus: 1.8
+    pids_limit: 128
+
+    # ---- 安全限制 ----
+    # 不挂载 Docker Socket
+    # 不使用 privileged
+    # 不启用只读根文件系统（应用需要写入 /app/storage, /app/data, /tmp）
+    # 原因: 模型推理产生临时文件，Chroma 需要写入索引，SQLite 需要 WAL 文件
+
+    # ---- 优雅停止 ----
+    stop_grace_period: 90s
+    stop_signal: SIGTERM
+
+    # ---- 容器日志轮转 ----
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+    # ---- 健康检查 ----
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      # 使用 liveness 端点 — 轻量级，不查数据库/模型，避免模型加载期间误杀
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 90s
+      start_period: 120s
 
   # ---- Nginx 前端 ----
   frontend:
@@ -62,14 +100,46 @@ services:
       dockerfile: frontend/Dockerfile
     image: yujian-rag-frontend:latest
     container_name: yujian-frontend
-    restart: always
+    restart: unless-stopped
+
     ports:
       - "80:80"
+
     depends_on:
       backend:
         condition: service_healthy
+
     networks:
       - yujian-net
+
+    # ---- 资源约束 ----
+    mem_limit: 256m
+    mem_reservation: 64m
+    cpus: 0.5
+    pids_limit: 64
+
+    # ---- 安全限制 ----
+    # Nginx 只需要只读静态文件 + 可写日志目录
+    # 暂不启用 read_only: true（Nginx 需要写 /var/cache/nginx, /var/run）
+
+    # ---- 优雅停止 ----
+    stop_grace_period: 30s
+    stop_signal: SIGTERM
+
+    # ---- 容器日志轮转 ----
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+    # ---- 健康检查 ----
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 # ---- 持久化存储卷（external, 不可删除） ----
 volumes:

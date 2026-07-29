@@ -67,6 +67,9 @@ class AdminSystemService:
         else:
             overall = "ok"
 
+        # Disk space (Phase 10)
+        disk_info = self._get_disk_info()
+
         return {
             "success": True,
             "version": self.settings.APP_VERSION,
@@ -75,6 +78,7 @@ class AdminSystemService:
             "deepseek": deepseek_status,
             "chroma": chroma_status,
             "sqlite": sqlite_status,
+            "disk": disk_info,
             "stats": stats,
         }
 
@@ -641,3 +645,19 @@ class AdminSystemService:
         project_root = get_settings().PROJECT_ROOT
         if str(project_root) not in sys.path:
             sys.path.insert(0, str(project_root))
+
+    @staticmethod
+    def _get_disk_info() -> dict:
+        """获取磁盘使用信息 (Phase 10)。
+
+        管理员可见详细磁盘信息，普通用户不可访问此方法。
+        """
+        try:
+            from backend.app.services.disk_monitor import get_disk_summary
+            return get_disk_summary()
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"磁盘检查失败: {str(e)[:100]}",
+                "disks": [],
+            }
