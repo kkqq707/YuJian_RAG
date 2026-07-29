@@ -50,6 +50,7 @@ data/
 backup/
 logs/
 models/
+!backend/models/
 
 # ---- 临时文件 ----
 *.tmp

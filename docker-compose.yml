@@ -88,8 +88,8 @@ services:
 
     # ---- 健康检查 ----
     healthcheck:
-      # 使用 liveness 端点 — 轻量级，不查数据库/模型，避免模型加载期间误杀
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
+      # 使用综合健康检查端点 — 验证数据库+向量库就绪
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
