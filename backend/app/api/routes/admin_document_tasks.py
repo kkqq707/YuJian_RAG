@@ -30,6 +30,7 @@ from backend.app.schemas.document_task import (
 from backend.app.security.dependencies import require_admin
 from backend.app.services.document_task_service import DocumentTaskService
 from backend.app.services.audit_service import AuditService
+from backend.app.rate_limit_dependency import rate_limit_admin_poll, rate_limit_admin_write
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,12 @@ def _get_client_info(request: Request) -> tuple:
 # ---------------------------------------------------------------------------
 
 
-@router.get("", response_model=DocumentTaskListResponse, summary="获取文档任务列表")
+@router.get(
+    "",
+    response_model=DocumentTaskListResponse,
+    summary="获取文档任务列表",
+    dependencies=[Depends(rate_limit_admin_poll)],
+)
 async def list_tasks(
     request: Request,
     status: Optional[str] = Query(None, description="过滤状态: pending | running | completed | failed | cancelled"),
@@ -110,7 +116,12 @@ async def get_task_detail(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{task_id}/cancel", response_model=TaskActionResponse, summary="取消任务")
+@router.post(
+    "/{task_id}/cancel",
+    response_model=TaskActionResponse,
+    summary="取消任务",
+    dependencies=[Depends(rate_limit_admin_write)],
+)
 async def cancel_task(
     task_id: int,
     request: Request,
@@ -156,7 +167,12 @@ async def cancel_task(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{task_id}/retry", response_model=TaskActionResponse, summary="重试任务")
+@router.post(
+    "/{task_id}/retry",
+    response_model=TaskActionResponse,
+    summary="重试任务",
+    dependencies=[Depends(rate_limit_admin_write)],
+)
 async def retry_task(
     task_id: int,
     request: Request,

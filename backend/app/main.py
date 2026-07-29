@@ -17,7 +17,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.router import api_router
 from backend.app.config import get_settings
-from backend.app.dependencies import (
+from backend.app.middleware import (
+    AccessLogMiddleware,
     RequestIDMiddleware,
     RequestTimingMiddleware,
     SecurityHeadersMiddleware,
@@ -357,8 +358,9 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
 
     # ---- 自定义中间件 ----
-    app.add_middleware(RequestTimingMiddleware)
     app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(RequestTimingMiddleware)
 
     # ---- 路由 ----
     app.include_router(api_router)

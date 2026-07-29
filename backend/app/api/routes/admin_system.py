@@ -586,6 +586,40 @@ async def inference_metrics(
 
 
 # ---------------------------------------------------------------------------
+# Phase 9: 运行时指标
+# ---------------------------------------------------------------------------
+
+
+@router.get("/runtime-metrics", summary="获取运行时指标 (Phase 9)")
+async def runtime_metrics(
+    request: Request,
+    current_user: User = Depends(require_admin),
+):
+    """获取 HTTP 和限流运行时指标（进程内，重启归零）。
+
+    包含: http_requests_total, http_requests_active, 各类状态码计数,
+          rate_limited_total, slow_request_total, 请求耗时等。
+
+    不暴露 IP 列表和用户名列表。
+    需要管理员权限。
+    """
+    from backend.app.metrics import get_metrics
+    from backend.app.rate_limiter import get_rate_limiter
+
+    metrics = get_metrics()
+    limiter = get_rate_limiter()
+
+    snapshot = metrics.snapshot()
+    snapshot["rate_limiter_active_keys"] = limiter.get_active_key_count()
+    snapshot["rate_limiter_total_denied"] = limiter.get_total_denied()
+
+    return {
+        "success": True,
+        "metrics": snapshot,
+    }
+
+
+# ---------------------------------------------------------------------------
 # 系统日志路由（/admin/logs 前缀）
 # ---------------------------------------------------------------------------
 

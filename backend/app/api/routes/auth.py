@@ -28,6 +28,8 @@ from backend.app.schemas.auth import (
 from backend.app.security.dependencies import get_current_active_user
 from backend.app.services.auth_service import AuthService, AuthenticationError
 from backend.app.services.audit_service import AuditService
+from backend.app.rate_limiter import check_rate_limit
+from backend.app.client_ip import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,10 @@ async def login(request: Request, body: LoginRequest, db: Session = Depends(get_
     - 任何意外异常安全降级为 401（绝不返回 500）
     """
     ip, ua = _get_client_info(request)
+
+    # Phase 9: 限流检查
+    client_ip, _ = get_client_ip(request)
+    check_rate_limit(client_ip, "auth_login")
 
     try:
         auth_service = AuthService(db)
@@ -138,6 +144,11 @@ async def refresh_token(
     - 检测到已撤销 Token 再次使用 → 撤销该用户所有 Token
     """
     ip, ua = _get_client_info(request)
+
+    # Phase 9: 限流检查
+    client_ip, _ = get_client_ip(request)
+    check_rate_limit(client_ip, "auth_refresh")
+
     auth_service = AuthService(db)
 
     try:

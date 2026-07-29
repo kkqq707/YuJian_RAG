@@ -47,6 +47,7 @@ from backend.app.security.dependencies import require_admin
 from backend.app.services.admin_files_service import AdminFilesService
 from backend.app.services.audit_service import AuditService
 from backend.app.vector_store_runtime import VectorStoreBusyError, DuplicateOperationError
+from backend.app.rate_limit_dependency import rate_limit_admin_read, rate_limit_admin_write, rate_limit_upload
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,11 @@ async def list_files(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/upload", summary="上传知识库文件 (Phase 8: 异步处理)")
+@router.post(
+    "/upload",
+    summary="上传知识库文件 (Phase 8: 异步处理)",
+    dependencies=[Depends(rate_limit_upload)],
+)
 async def upload_files(
     request: Request,
     files: list[UploadFile] = File(..., description="知识库文件（txt/pdf/docx/md/xlsx，单文件最大 50MB）"),
@@ -142,7 +147,11 @@ async def upload_files(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/rebuild-index", summary="重建知识库索引 (Phase 8: 异步处理)")
+@router.post(
+    "/rebuild-index",
+    summary="重建知识库索引 (Phase 8: 异步处理)",
+    dependencies=[Depends(rate_limit_admin_write)],
+)
 async def rebuild_index(
     request: Request,
     current_user: User = Depends(require_admin),

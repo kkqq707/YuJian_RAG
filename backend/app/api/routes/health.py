@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from sqlalchemy import text
@@ -126,7 +126,7 @@ def _check_rag() -> bool:
 
 
 @router.get("/health")
-async def health_check():
+async def health_check(request: Request):
     """生产级健康检查 — 多维度检测服务状态。
 
     返回值:
@@ -140,6 +140,12 @@ async def health_check():
     - 200: 所有组件正常
     - 503: 一个或多个组件异常
     """
+    # Phase 9: 健康检查限流（高额度，300 req/min）
+    from backend.app.client_ip import get_client_ip
+    from backend.app.rate_limiter import check_rate_limit
+    client_ip, _ = get_client_ip(request)
+    check_rate_limit(client_ip, "health")
+
     database_ok = _check_database()
     rag_ok = _check_rag()
 

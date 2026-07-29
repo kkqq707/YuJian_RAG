@@ -131,6 +131,26 @@ class Settings(BaseSettings):
     MAX_PENDING_DOCUMENT_TASKS: int = 20
     MAX_TASK_RETRY_COUNT: int = 3
 
+    # ---- API 限流 (Phase 9) ----
+    TRUSTED_PROXIES: str = ""  # 可信代理 IP/网段，逗号分隔。Docker 内部自动信任常见网段
+
+    # ---- 可观测性 (Phase 9) ----
+    SLOW_REQUEST_THRESHOLD_MS: int = 3000
+    VERY_SLOW_REQUEST_THRESHOLD_MS: int = 10000
+    ACCESS_LOG_ENABLED: bool = True
+    HEALTH_LOG_THROTTLE_SECONDS: int = 10
+
+    # ---- 限流规则覆盖 (Phase 9) —— 可通过环境变量调整 ----
+    RATE_LIMIT_LOGIN_PER_MINUTE: int = 10
+    RATE_LIMIT_REFRESH_PER_MINUTE: int = 20
+    RATE_LIMIT_CHAT_USER_PER_MINUTE: int = 30
+    RATE_LIMIT_CHAT_MESSAGE_PER_MINUTE: int = 20
+    RATE_LIMIT_ADMIN_READ_PER_MINUTE: int = 200
+    RATE_LIMIT_ADMIN_WRITE_PER_MINUTE: int = 30
+    RATE_LIMIT_ADMIN_POLL_PER_MINUTE: int = 20
+    RATE_LIMIT_UPLOAD_PER_MINUTE: int = 10
+    RATE_LIMIT_HEALTH_PER_MINUTE: int = 300
+
     # ---- 日志目录 ----
     @property
     def LOG_DIR(self) -> Path:

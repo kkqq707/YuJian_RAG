@@ -295,16 +295,80 @@ def register_exception_handlers(app):
     except ImportError:
         pass
 
+    # ---- Phase 9: 限流异常处理器 ----
+    try:
+        from backend.app.rate_limiter import RateLimitExceeded
+        from backend.app.metrics import get_metrics
+
+        @app.exception_handler(RateLimitExceeded)
+        async def rate_limit_exceeded_handler(
+            request: Request, exc: RateLimitExceeded,
+        ) -> JSONResponse:
+            request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+            # 更新指标
+            try:
+                metrics = get_metrics()
+                metrics.inc_rate_limited(category="")
+                # 根据路径推断限流类别
+                path = request.url.path
+                if "/auth/login" in path:
+                    metrics.inc_rate_limited(category="login")
+                elif "/chat" in path:
+                    metrics.inc_rate_limited(category="chat")
+                elif "/upload" in path or "/files/upload" in path:
+                    metrics.inc_rate_limited(category="upload")
+            except Exception:
+                pass
+
+            logger.info(
+                "rate_limited | request_id=%s rule=%s retry_after=%d",
+                request_id, exc.rule_name, exc.retry_after,
+            )
+
+            response = JSONResponse(
+                status_code=429,
+                content={
+                    "detail": exc.message,
+                    "code": exc.code,
+                    "retry_after": exc.retry_after,
+                    "request_id": request_id,
+                },
+                headers={
+                    "Retry-After": str(exc.retry_after),
+                    "X-Request-ID": request_id,
+                },
+            )
+            # 标记为 rate_limited
+            request.state.rate_limited = True
+            return response
+
+    except ImportError:
+        pass
+
     @app.exception_handler(Exception)
     async def generic_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
         request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+        # 客户端取消不记录为 500
+        exc_name = type(exc).__name__
+        if "ClientDisconnect" in exc_name or "cancel" in str(exc).lower():
+            logger.info(
+                "客户端取消 | request_id=%s | %s",
+                request_id, exc_name,
+            )
+            return _build_error_response(
+                code="CLIENT_DISCONNECT",
+                message="请求已取消",
+                status_code=499,
+                request_id=request_id,
+            )
+
         # 记录完整 traceback 到日志，便于排查
         logger.error(
             "未处理异常 | request_id=%s | %s: %s\n%s",
             request_id,
-            type(exc).__name__,
+            exc_name,
             str(exc)[:200],
             traceback.format_exc(),
         )

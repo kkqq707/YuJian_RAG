@@ -69,6 +69,8 @@ export function extractLoginErrorMessage(error: unknown): string {
         data?: {
           detail?: string
           message?: string
+          code?: string
+          retry_after?: number
           error?: { message?: string; code?: string }
         }
       }
@@ -86,7 +88,12 @@ export function extractLoginErrorMessage(error: unknown): string {
       case 423:
         return serverMessage || '账户已被锁定，请稍后再试'
       case 429:
-        return '请求过于频繁，请稍后再试'
+        // Phase 9: 读取 retry_after 并显示倒计时
+        const retryAfter = data?.retry_after as number | undefined
+        if (retryAfter && retryAfter > 0) {
+          return `请求过于频繁，请在 ${retryAfter} 秒后重试`
+        }
+        return serverMessage || '请求过于频繁，请稍后再试'
       case 500:
         return '服务器异常，请稍后再试'
       default:
@@ -137,6 +144,8 @@ export function extractChatErrorMessage(error: unknown): string {
         data?: {
           message?: string
           detail?: string
+          code?: string
+          retry_after?: number
           error?: { message?: string; code?: string }
         }
       }
@@ -157,6 +166,15 @@ export function extractChatErrorMessage(error: unknown): string {
         // Phase 6: 区分用户请求超限和通用限流
         if (errorCode === 'USER_REQUEST_LIMIT') {
           return serverMessage || '当前已有回答正在生成，请稍候。'
+        }
+        // Phase 9: RATE_LIMITED — 读取 retry_after
+        const rateLimitedCode = errorCode || data?.code || ''
+        if (rateLimitedCode === 'RATE_LIMITED') {
+          const ra = data?.retry_after as number | undefined
+          if (ra && ra > 0) {
+            return `请求过于频繁，请在 ${ra} 秒后重试`
+          }
+          return serverMessage || '请求过于频繁，请稍后重试'
         }
         return serverMessage || '请求过于频繁，请稍后再试'
       case 500:

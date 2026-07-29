@@ -138,6 +138,25 @@ request.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
+    // 429 限流处理 — Phase 9
+    if (error.response?.status === 429) {
+      const data = error.response.data as Record<string, unknown> | undefined
+      const detail = (data?.detail as string) || '请求过于频繁，请稍后重试'
+      const retryAfter = (data?.retry_after as number) || 30
+      // 触发全局 429 事件（各组件可监听以恢复 UI 状态）
+      window.dispatchEvent(new CustomEvent('api:rate-limited', {
+        detail: {
+          url: originalRequest.url,
+          retry_after: retryAfter,
+          detail: detail,
+        },
+      }))
+      // 增强错误对象
+      ;(error as unknown as Record<string, unknown>).rateLimitedDetail = detail
+      ;(error as unknown as Record<string, unknown>).retryAfter = retryAfter
+      return Promise.reject(error)
+    }
+
     // 401 处理
     if (error.response?.status === 401 && !originalRequest._retry) {
       // 跳过登录和刷新接口

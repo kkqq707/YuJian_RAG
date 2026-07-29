@@ -55,6 +55,8 @@ from backend.app.security.dependencies import (
 from backend.app.services.rag_adapter import get_rag_adapter
 from backend.app.services.rag_adapter_async import get_async_rag_adapter, set_async_rag_runtime
 from backend.app.services.inference_runtime import UserRequestLimitError
+from backend.app.rate_limiter import check_rate_limit
+from backend.app.client_ip import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +76,13 @@ async def chat(
     Phase 6: 使用 AsyncRAGAdapter + 用户级并发控制。
     """
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+
+    # Phase 9: 限流检查（IP + 用户组合）
+    client_ip, _ = get_client_ip(request)
+    check_rate_limit(client_ip, "chat_user", current_user.id)
+    # Phase 9: 保存 user_id 到 request.state 供访问日志使用
+    request.state.auth_user_id = current_user.id
+
     t0 = time.perf_counter()
 
     # ---- Phase 6: 获取推理运行时 ----
@@ -174,6 +183,13 @@ async def admin_chat_preview(
     Phase 6: 管理员请求不进入用户级并发控制。
     """
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+
+    # Phase 9: 限流检查（管理员写入类接口）
+    client_ip, _ = get_client_ip(request)
+    check_rate_limit(client_ip, "admin_write", current_user.id)
+    # Phase 9: 保存 user_id 到 request.state 供访问日志使用
+    request.state.auth_user_id = current_user.id
+
     t0 = time.perf_counter()
 
     # 管理员使用同步适配器（管理后台调用频率低，不需要排队）
@@ -361,6 +377,12 @@ async def send_message(
     3. 保存助手消息 + 更新会话
     """
     request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+
+    # Phase 9: 限流检查（IP + 用户组合）
+    client_ip, _ = get_client_ip(request)
+    check_rate_limit(client_ip, "chat_user_message", current_user.id)
+    # Phase 9: 保存 user_id 到 request.state 供访问日志使用
+    request.state.auth_user_id = current_user.id
 
     # 验证会话所有权
     session = chat_repository.get_session_by_id(
