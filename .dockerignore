@@ -52,6 +52,20 @@ logs/
 models/
 !backend/models/
 
+# ---- 大文件（不进入构建上下文） ----
+# 模型打包文件（模型由 backend/models/ 直接复制）
+models.tar.gz
+*.tar.gz
+*.zip
+*.7z
+*.rar
+
+# ---- 备份目录 ----
+*_backup_*/
+_backup*/
+backup_*/
+*_backup*/
+
 # ---- 临时文件 ----
 *.tmp
 *.temp
@@ -79,6 +93,12 @@ test/
 coverage/
 .coverage
 htmlcov/
+DEPLOY.md
+
+# ---- 本地开发脚本（不进入 Docker 镜像） ----
+*.ps1
+*.bat
+chat_cli.py
 
 # ---- 密钥和证书 ----
 *.pem

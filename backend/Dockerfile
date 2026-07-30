@@ -13,7 +13,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     # 离线模式（企业部署）
     HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1 \
-    HF_DATASETS_OFFLINE=1
+    HF_DATASETS_OFFLINE=1 \
+    # pip 国内镜像源（加速构建）
+    PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+    PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
 
 WORKDIR /app
 
