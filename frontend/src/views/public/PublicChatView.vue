@@ -3,30 +3,18 @@
     <!-- 顶部栏 -->
     <header class="public-chat-view__header">
       <div class="public-chat-view__header-info">
-        <h2 class="public-chat-view__title">AI 智能助手</h2>
-        <span class="public-chat-view__status">
-          <span class="status-dot" />
-          <span class="public-chat-view__status-text">在线</span>
-        </span>
-      </div>
-      <div class="public-chat-view__header-right">
-        <el-button
-          v-if="!isMobile"
-          text
-          @click="handleClearChat"
-        >
-          <Trash2 :size="16" />
-          <span>清空对话</span>
-        </el-button>
-        <el-button
-          v-else
-          text
-          class="touch-target"
-          aria-label="清空对话"
-          @click="handleClearChat"
-        >
-          <Trash2 :size="20" />
-        </el-button>
+        <img
+          src="/logo.png"
+          alt="煜见科技"
+          class="public-chat-view__logo"
+        />
+        <div class="public-chat-view__brand">
+          <h2 class="public-chat-view__title">煜见科技 AI 智能助手</h2>
+          <span class="public-chat-view__status">
+            <span class="status-dot" />
+            <span class="public-chat-view__status-text">在线</span>
+          </span>
+        </div>
       </div>
     </header>
 
@@ -36,12 +24,12 @@
       class="public-chat-view__messages"
       @scroll="handleScroll"
     >
-      <!-- 空会话欢迎页 -->
-      <WelcomePanel
+      <!-- 品牌欢迎卡片 -->
+      <PublicWelcomeCard
         v-if="!store.hasMessages"
         :sending="store.sending"
         :is-mobile="isMobile"
-        @select="handleSuggestedQuestion"
+        @select="handleFillInput"
       />
 
       <!-- 消息列表 -->
@@ -67,6 +55,16 @@
             :is-mobile="isMobile"
             @retry="handleRetry(msg)"
           />
+
+          <!-- 助手回复后免责声明 -->
+          <div
+            v-if="msg.role === 'assistant' && msg.status === 'success'"
+            class="public-chat-view__disclaimer"
+          >
+            <div class="disclaimer-divider" />
+            <p>以上内容由 AI 基于企业知识库生成，仅供参考。</p>
+            <p>如需正式业务咨询，请联系煜见科技工作人员。</p>
+          </div>
         </div>
       </div>
     </div>
@@ -102,10 +100,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch, inject, type Ref } from 'vue'
-import { ElMessageBox } from 'element-plus'
-import { Trash2, ChevronDown } from '@lucide/vue'
+import { ChevronDown } from '@lucide/vue'
 import { usePublicChatStore } from '@/stores/publicChatStore'
-import WelcomePanel from '@/components/chat/WelcomePanel.vue'
+import PublicWelcomeCard from '@/components/chat/PublicWelcomeCard.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import type { PublicChatMessage } from '@/stores/publicChatStore'
@@ -187,22 +184,8 @@ async function handleSend(question: string) {
   scrollToBottom()
 }
 
-async function handleSuggestedQuestion(question: string) {
-  await store.sendQuestion(question)
-  userScrolledUp = false
-  scrollToBottom()
-}
-
-function handleClearChat() {
-  ElMessageBox.confirm('确定要清空当前对话吗？此操作不可恢复。', '清空对话', {
-    confirmButtonText: '清空',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(() => {
-    store.clearMessages()
-  }).catch(() => {
-    // 取消
-  })
+function handleFillInput(question: string) {
+  chatInputRef.value?.setText(question)
 }
 
 async function handleRetry(_msg: PublicChatMessage) {
@@ -252,6 +235,21 @@ onUnmounted(() => {
   min-width: 0;
 }
 
+.public-chat-view__logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.public-chat-view__brand {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  min-width: 0;
+}
+
 .public-chat-view__title {
   font-size: $font-size-lg;
   font-weight: 600;
@@ -276,18 +274,6 @@ onUnmounted(() => {
     border-radius: 50%;
     background: $color-success;
     flex-shrink: 0;
-  }
-}
-
-.public-chat-view__header-right {
-  display: flex;
-  align-items: center;
-  gap: $spacing-xs;
-  flex-shrink: 0;
-
-  :deep(.el-button) {
-    font-size: $font-size-sm;
-    color: $color-text-secondary;
   }
 }
 
@@ -385,6 +371,11 @@ onUnmounted(() => {
     width: min(100%, 800px);
   }
 
+  .public-chat-view__disclaimer {
+    width: min(100%, 800px);
+    padding-left: 48px;
+  }
+
   .public-chat-view__input {
     padding: 0 $spacing-md $spacing-sm;
 
@@ -403,6 +394,16 @@ onUnmounted(() => {
     height: 52px;
   }
 
+  .public-chat-view__logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+  }
+
+  .public-chat-view__title {
+    font-size: $font-size-sm;
+  }
+
   .public-chat-view__status-text {
     display: none;
   }
@@ -413,6 +414,13 @@ onUnmounted(() => {
 
   .public-chat-view__message-list {
     width: 100%;
+  }
+
+  .public-chat-view__disclaimer {
+    width: 100%;
+    padding-left: 10px;
+    font-size: 10px;
+    color: #c0c8d0;
   }
 
   .public-chat-view__scroll-btn {
@@ -426,6 +434,28 @@ onUnmounted(() => {
     :deep(.chat-input) {
       width: 100%;
     }
+  }
+}
+
+// ---- 助手回复免责声明 ----
+.public-chat-view__disclaimer {
+  width: min(100%, 960px);
+  margin: 0 auto;
+  font-size: 11px;
+  color: #b0b8c1;
+  text-align: left;
+  padding: 2px 0 $spacing-md 56px;
+
+  .disclaimer-divider {
+    width: 100%;
+    height: 1px;
+    background: #eef0f2;
+    margin-bottom: $spacing-xs;
+  }
+
+  p {
+    margin: 1px 0;
+    line-height: 1.4;
   }
 }
 

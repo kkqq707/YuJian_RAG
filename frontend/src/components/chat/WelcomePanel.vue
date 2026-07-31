@@ -3,9 +3,9 @@
     <div class="welcome-icon">
       <Sparkles :size="isMobile ? 36 : 48" />
     </div>
-    <h1 class="welcome-title">您好，我是企业智库 AI 助手</h1>
+    <h1 class="welcome-title">{{ title || '您好，我是企业智库 AI 助手' }}</h1>
     <p class="welcome-desc">
-      我可以基于企业内部资料，为您解答业务、产品、制度和服务相关问题。
+      {{ description || '我可以基于企业内部资料，为您解答业务、产品、制度和服务相关问题。' }}
     </p>
     <div class="welcome-suggestions">
       <button
@@ -28,6 +28,8 @@ import { Sparkles } from '@lucide/vue'
 defineProps<{
   sending?: boolean
   isMobile?: boolean
+  title?: string
+  description?: string
 }>()
 
 defineEmits<{
@@ -81,6 +83,7 @@ const suggestions = [
   max-width: 420px;
   line-height: 1.6;
   margin: 0 0 $spacing-xl;
+  white-space: pre-line;
 }
 
 .welcome-suggestions {

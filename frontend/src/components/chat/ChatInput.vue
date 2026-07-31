@@ -122,12 +122,23 @@ function handleSend() {
   })
 }
 
+function setText(text: string): void {
+  inputText.value = text
+  nextTick(() => {
+    handleInput()
+    const el = textareaRef.value?.$el?.querySelector('textarea') as HTMLTextAreaElement | null
+    if (el) {
+      el.focus()
+    }
+  })
+}
+
 function clear(): void {
   inputText.value = ''
   textareaRows.value = 1
 }
 
-defineExpose({ clear })
+defineExpose({ clear, setText })
 </script>
 
 <style lang="scss" scoped>
