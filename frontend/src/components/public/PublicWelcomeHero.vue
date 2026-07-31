@@ -7,7 +7,7 @@
       <!-- Logo 白色卡片容器 -->
       <div class="welcome-hero__logo-card">
         <img
-          src="/logo.png"
+          src="/image/logo.png"
           alt="煜见科技"
           class="welcome-hero__logo"
         />
@@ -116,13 +116,13 @@ const quickPrompts = [
 @keyframes logoCardGlow {
   0%, 100% {
     box-shadow:
-      0 8px 32px rgba(37, 99, 235, 0.10),
-      0 2px 8px rgba(16, 24, 40, 0.06);
+      0 4px 16px rgba(37, 99, 235, 0.06),
+      0 1px 4px rgba(16, 24, 40, 0.04);
   }
   50% {
     box-shadow:
-      0 8px 40px rgba(37, 99, 235, 0.18),
-      0 2px 12px rgba(16, 24, 40, 0.08);
+      0 4px 24px rgba(37, 99, 235, 0.10),
+      0 1px 6px rgba(16, 24, 40, 0.06);
   }
 }
 
@@ -155,19 +155,19 @@ const quickPrompts = [
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 88px;
-  height: 88px;
+  width: 96px;
+  height: 96px;
   background: #FFFFFF;
-  border-radius: 22px;
+  border-radius: 24px;
   margin-bottom: 32px;
   animation: logoCardGlow 4s ease-in-out infinite;
 }
 
 .welcome-hero__logo {
-  width: 60px;
-  height: 60px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
-  border-radius: 14px;
+  border-radius: 16px;
 }
 
 .welcome-hero__title {
@@ -310,16 +310,16 @@ const quickPrompts = [
   }
 
   .welcome-hero__logo-card {
-    width: 80px;
-    height: 80px;
+    width: 84px;
+    height: 84px;
     border-radius: 20px;
     margin-bottom: 28px;
   }
 
   .welcome-hero__logo {
-    width: 54px;
-    height: 54px;
-    border-radius: 12px;
+    width: 63px;
+    height: 63px;
+    border-radius: 14px;
   }
 
   .welcome-hero__title,
@@ -365,9 +365,9 @@ const quickPrompts = [
   }
 
   .welcome-hero__logo {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
   }
 
   .welcome-hero__title,
