@@ -155,8 +155,8 @@ const quickPrompts = [
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   background: #FFFFFF;
   border-radius: 20px;
   margin-bottom: 32px;
@@ -164,8 +164,8 @@ const quickPrompts = [
 }
 
 .welcome-hero__logo {
-  width: 58px;
-  height: 58px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
   border-radius: 14px;
 }
