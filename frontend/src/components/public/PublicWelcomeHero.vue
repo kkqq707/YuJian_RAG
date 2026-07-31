@@ -1,10 +1,11 @@
 <template>
   <div class="welcome-hero">
     <!-- ============================================================
-    Hero 区域 — Logo + 问候语
+    Hero 区域 — Logo卡片 + 标题
     ============================================================ -->
     <div class="welcome-hero__brand">
-      <div class="welcome-hero__logo-wrap">
+      <!-- Logo 白色卡片容器 -->
+      <div class="welcome-hero__logo-card">
         <img
           src="/logo.png"
           alt="煜见科技"
@@ -33,15 +34,15 @@
           :aria-label="prompt.label"
           @click="$emit('select', prompt.question)"
         >
-          <span class="quick-prompt-btn__icon">
-            <component :is="prompt.icon" :size="18" />
+          <span class="quick-prompt-btn__icon" :style="{ background: prompt.iconBg, color: prompt.iconColor }">
+            <component :is="prompt.icon" :size="20" />
           </span>
           <span class="quick-prompt-btn__text">
             <span class="quick-prompt-btn__label">{{ prompt.label }}</span>
-            <span class="quick-prompt-btn__question">{{ prompt.question }}</span>
+            <span class="quick-prompt-btn__desc">{{ prompt.desc }}</span>
           </span>
           <span class="quick-prompt-btn__arrow">
-            <ChevronRight :size="14" />
+            <ChevronRight :size="16" />
           </span>
         </button>
       </div>
@@ -50,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { Building2, Package, FileText, Handshake, ChevronRight } from '@lucide/vue'
+import { Building2, Package, Cpu, MessageCircle, ChevronRight } from '@lucide/vue'
 
 defineProps<{
   sending?: boolean
@@ -65,22 +66,34 @@ const quickPrompts = [
   {
     icon: Building2,
     label: '公司介绍',
+    desc: '了解煜见科技业务方向',
     question: '煜见科技是做什么的？',
+    iconBg: '#EEF2FF',
+    iconColor: '#4F46E5',
   },
   {
     icon: Package,
     label: '产品信息',
+    desc: '探索产品与服务能力',
     question: '煜见科技有哪些产品？',
+    iconBg: '#F0F9FF',
+    iconColor: '#0284C7',
   },
   {
-    icon: FileText,
-    label: '服务流程',
-    question: '公司提供什么样的服务？',
+    icon: Cpu,
+    label: '技术方案',
+    desc: '查看 AI 与数字化解决方案',
+    question: '公司有哪些技术服务？',
+    iconBg: '#FFF7ED',
+    iconColor: '#EA580C',
   },
   {
-    icon: Handshake,
-    label: '合作政策',
-    question: '如何与公司合作？',
+    icon: MessageCircle,
+    label: '合作咨询',
+    desc: '了解合作方式与流程',
+    question: '如何与煜见科技合作？',
+    iconBg: '#F0FDF4',
+    iconColor: '#16A34A',
   },
 ]
 </script>
@@ -100,12 +113,16 @@ const quickPrompts = [
   }
 }
 
-@keyframes logoGlow {
+@keyframes logoCardGlow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(37, 99, 235, 0.12), 0 0 40px rgba(37, 99, 235, 0.04);
+    box-shadow:
+      0 8px 32px rgba(37, 99, 235, 0.10),
+      0 2px 8px rgba(16, 24, 40, 0.06);
   }
   50% {
-    box-shadow: 0 0 28px rgba(37, 99, 235, 0.20), 0 0 56px rgba(37, 99, 235, 0.08);
+    box-shadow:
+      0 8px 40px rgba(37, 99, 235, 0.18),
+      0 2px 12px rgba(16, 24, 40, 0.08);
   }
 }
 
@@ -126,29 +143,35 @@ const quickPrompts = [
 }
 
 // ================================================================
-// Hero Brand — Logo + 标题 + 副标题
+// Hero Brand — Logo卡片 + 标题 + 副标题
 // ================================================================
 .welcome-hero__brand {
   text-align: center;
   margin-bottom: 40px;
 }
 
-.welcome-hero__logo-wrap {
-  display: inline-block;
-  margin-bottom: 28px;
+// Logo 白色卡片容器
+.welcome-hero__logo-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  background: #FFFFFF;
+  border-radius: 22px;
+  margin-bottom: 32px;
+  animation: logoCardGlow 4s ease-in-out infinite;
 }
 
 .welcome-hero__logo {
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
-  border-radius: 18px;
-  animation: logoGlow 4s ease-in-out infinite;
-  background: #fff;
+  border-radius: 14px;
 }
 
 .welcome-hero__title {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
   color: #0F172A;
   margin: 0;
@@ -157,12 +180,12 @@ const quickPrompts = [
 }
 
 .welcome-hero__highlight {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
   margin: 0;
   line-height: 1.4;
   letter-spacing: -0.4px;
-  background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%);
+  background: linear-gradient(135deg, #2563EB 0%, #6366F1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -171,7 +194,7 @@ const quickPrompts = [
 .welcome-hero__subtitle {
   font-size: 15px;
   color: #94A3B8;
-  margin: 16px 0 0;
+  margin: 18px 0 0;
   line-height: 1.7;
   font-weight: 400;
   max-width: 480px;
@@ -182,39 +205,35 @@ const quickPrompts = [
 // ================================================================
 .welcome-hero__quick-prompts {
   width: 100%;
-  max-width: 560px;
+  max-width: 580px;
 }
 
 .welcome-hero__quick-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .quick-prompt-btn {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
-  padding: 14px 18px;
+  padding: 16px 20px;
   background: #FFFFFF;
   border: 1px solid #F1F5F9;
-  border-radius: 14px;
+  border-radius: 16px;
   cursor: pointer;
   transition: all 0.25s ease;
   font-family: inherit;
   text-align: left;
   color: #334155;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
 
   &:hover:not(:disabled) {
     border-color: #BFDBFE;
-    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.10);
-    transform: translateX(4px);
-
-    .quick-prompt-btn__icon {
-      background: #DBEAFE;
-      color: #2563EB;
-    }
+    box-shadow: 0 6px 24px rgba(37, 99, 235, 0.10);
+    transform: translateY(-2px);
 
     .quick-prompt-btn__label {
       color: #2563EB;
@@ -223,11 +242,12 @@ const quickPrompts = [
     .quick-prompt-btn__arrow {
       opacity: 1;
       color: #2563EB;
+      transform: translateX(2px);
     }
   }
 
   &:active:not(:disabled) {
-    transform: translateX(2px);
+    transform: translateY(0);
   }
 
   &:disabled {
@@ -237,16 +257,18 @@ const quickPrompts = [
 }
 
 .quick-prompt-btn__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: #F8FAFC;
-  color: #64748B;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease;
+
+  .quick-prompt-btn:hover & {
+    transform: scale(1.05);
+  }
 }
 
 .quick-prompt-btn__text {
@@ -256,18 +278,18 @@ const quickPrompts = [
 
 .quick-prompt-btn__label {
   display: block;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  color: #334155;
+  color: #0F172A;
   line-height: 1.3;
   transition: color 0.25s ease;
 }
 
-.quick-prompt-btn__question {
+.quick-prompt-btn__desc {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   color: #94A3B8;
-  margin-top: 2px;
+  margin-top: 3px;
   line-height: 1.4;
 }
 
@@ -287,15 +309,22 @@ const quickPrompts = [
     max-width: 600px;
   }
 
+  .welcome-hero__logo-card {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    margin-bottom: 28px;
+  }
+
   .welcome-hero__logo {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
   }
 
   .welcome-hero__title,
   .welcome-hero__highlight {
-    font-size: 24px;
+    font-size: 26px;
   }
 
   .welcome-hero__subtitle {
@@ -303,7 +332,13 @@ const quickPrompts = [
   }
 
   .quick-prompt-btn {
-    padding: 12px 16px;
+    padding: 14px 18px;
+  }
+
+  .quick-prompt-btn__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
   }
 }
 
@@ -315,21 +350,24 @@ const quickPrompts = [
     padding: 0 16px;
     max-width: 100%;
     justify-content: flex-start;
-    padding-top: 32px;
+    padding-top: 24px;
   }
 
   .welcome-hero__brand {
-    margin-bottom: 32px;
+    margin-bottom: 28px;
+  }
+
+  .welcome-hero__logo-card {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    margin-bottom: 24px;
   }
 
   .welcome-hero__logo {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
-  }
-
-  .welcome-hero__logo-wrap {
-    margin-bottom: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
   }
 
   .welcome-hero__title,
@@ -340,7 +378,7 @@ const quickPrompts = [
 
   .welcome-hero__subtitle {
     font-size: 13px;
-    margin-top: 12px;
+    margin-top: 14px;
     max-width: 320px;
   }
 
@@ -349,23 +387,23 @@ const quickPrompts = [
   }
 
   .quick-prompt-btn {
-    padding: 12px 14px;
-    gap: 12px;
-    border-radius: 12px;
+    padding: 14px 16px;
+    gap: 14px;
+    border-radius: 14px;
   }
 
   .quick-prompt-btn__icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
   }
 
   .quick-prompt-btn__label {
-    font-size: 13px;
+    font-size: 14px;
   }
 
-  .quick-prompt-btn__question {
-    font-size: 11px;
+  .quick-prompt-btn__desc {
+    font-size: 12px;
   }
 
   .quick-prompt-btn__arrow {
@@ -381,7 +419,7 @@ const quickPrompts = [
     animation: none;
   }
 
-  .welcome-hero__logo {
+  .welcome-hero__logo-card {
     animation: none;
   }
 

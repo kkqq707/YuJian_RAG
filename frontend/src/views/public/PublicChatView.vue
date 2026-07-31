@@ -224,7 +224,7 @@ onUnmounted(() => {
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 40%, #F8FAFC 100%);
+  background: linear-gradient(180deg, #F0F5FF 0%, #F8FAFE 30%, #F0F5FF 70%, #F8FAFE 100%);
   position: relative;
 }
 
@@ -415,20 +415,22 @@ onUnmounted(() => {
     color: #94A3B8;
   }
 
-  // 输入框容器 — 大圆角 + 阴影
+  // 输入框容器 — 大圆角 + 阴影 + AI 科技感
   :deep(.chat-input__wrapper) {
     background: #FFFFFF;
-    border-radius: 20px;
+    border-radius: 24px;
     box-shadow:
-      0 4px 16px rgba(16, 24, 40, 0.06),
-      0 0 0 1px rgba(229, 231, 235, 0.8);
-    padding: 12px 16px;
-    transition: box-shadow 0.2s ease;
+      0 8px 30px rgba(16, 24, 40, 0.08),
+      0 2px 8px rgba(16, 24, 40, 0.04),
+      0 0 0 1px rgba(37, 99, 235, 0.08);
+    padding: 14px 20px;
+    transition: all 0.25s ease;
 
     &:focus-within {
       box-shadow:
-        0 4px 24px rgba(37, 99, 235, 0.12),
-        0 0 0 2px rgba(37, 99, 235, 0.2);
+        0 8px 36px rgba(37, 99, 235, 0.14),
+        0 2px 12px rgba(37, 99, 235, 0.06),
+        0 0 0 2px rgba(37, 99, 235, 0.15);
     }
   }
 
@@ -605,7 +607,7 @@ onUnmounted(() => {
     }
 
     :deep(.chat-input__wrapper) {
-      border-radius: 16px;
+      border-radius: 20px;
       padding: 10px 14px;
     }
 
