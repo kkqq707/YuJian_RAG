@@ -78,6 +78,7 @@ declare module 'vue' {
     ParticleBackground: typeof import('./components/common/ParticleBackground.vue')['default']
     ParticleNetwork: typeof import('./components/login/ParticleNetwork.vue')['default']
     PublicWelcomeCard: typeof import('./components/chat/PublicWelcomeCard.vue')['default']
+    PublicWelcomeHero: typeof import('./components/public/PublicWelcomeHero.vue')['default']
     QuickEntryCard: typeof import('./components/dashboard/QuickEntryCard.vue')['default']
     RebuildIndexDialog: typeof import('./components/knowledge/RebuildIndexDialog.vue')['default']
     ResetPasswordDialog: typeof import('./components/users/ResetPasswordDialog.vue')['default']

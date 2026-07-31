@@ -1,38 +1,44 @@
 <template>
   <div class="public-chat-view">
-    <!-- 顶部栏 -->
+    <!-- ==========================================================
+    顶部栏 — 品牌展示
+    ========================================================== -->
     <header class="public-chat-view__header">
-      <div class="public-chat-view__header-info">
-        <img
-          src="/logo.png"
-          alt="煜见科技"
-          class="public-chat-view__logo"
-        />
-        <div class="public-chat-view__brand">
-          <h2 class="public-chat-view__title">煜见科技 AI 智能助手</h2>
-          <span class="public-chat-view__status">
-            <span class="status-dot" />
-            <span class="public-chat-view__status-text">在线</span>
-          </span>
+      <div class="public-chat-view__header-inner">
+        <div class="public-chat-view__header-info">
+          <img
+            src="/logo.png"
+            alt="煜见科技"
+            class="public-chat-view__logo"
+          />
+          <div class="public-chat-view__brand">
+            <h2 class="public-chat-view__title">煜见科技 AI 智能助手</h2>
+            <span class="public-chat-view__status">
+              <span class="status-dot" />
+              <span class="public-chat-view__status-text">在线</span>
+            </span>
+          </div>
         </div>
       </div>
     </header>
 
-    <!-- 消息区 -->
+    <!-- ==========================================================
+    消息区
+    ========================================================== -->
     <div
       ref="messageAreaRef"
       class="public-chat-view__messages"
+      :class="{ 'public-chat-view__messages--has-content': store.hasMessages }"
       @scroll="handleScroll"
     >
-      <!-- 品牌欢迎卡片 -->
-      <PublicWelcomeCard
+      <!-- ---------- 品牌欢迎卡片（Hero） ---------- -->
+      <PublicWelcomeHero
         v-if="!store.hasMessages"
         :sending="store.sending"
-        :is-mobile="isMobile"
         @select="handleFillInput"
       />
 
-      <!-- 消息列表 -->
+      <!-- ---------- 消息列表 ---------- -->
       <div v-else class="public-chat-view__message-list">
         <div
           v-for="msg in store.messages"
@@ -69,8 +75,10 @@
       </div>
     </div>
 
-    <!-- 回到底部浮动按钮 -->
-    <transition name="fade">
+    <!-- ==========================================================
+    回到底部浮动按钮
+    ========================================================== -->
+    <transition name="scroll-btn-fade">
       <div
         v-if="showScrollToBottom"
         class="public-chat-view__scroll-btn touch-target"
@@ -85,7 +93,9 @@
       </div>
     </transition>
 
-    <!-- 输入区 -->
+    <!-- ==========================================================
+    输入区
+    ========================================================== -->
     <div class="public-chat-view__input">
       <ChatInput
         ref="chatInputRef"
@@ -102,7 +112,7 @@
 import { ref, onMounted, onUnmounted, nextTick, watch, inject, type Ref } from 'vue'
 import { ChevronDown } from '@lucide/vue'
 import { usePublicChatStore } from '@/stores/publicChatStore'
-import PublicWelcomeCard from '@/components/chat/PublicWelcomeCard.vue'
+import PublicWelcomeHero from '@/components/public/PublicWelcomeHero.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import type { PublicChatMessage } from '@/stores/publicChatStore'
@@ -205,33 +215,49 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
+// ================================================================
+// 整体布局
+// ================================================================
 .public-chat-view {
   display: flex;
   flex-direction: column;
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: $color-page-bg;
+  background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 40%, #F8FAFC 100%);
+  position: relative;
 }
 
-// ---- 顶部栏 ----
+// ================================================================
+// 顶部栏 — 简洁品牌风
+// ================================================================
 .public-chat-view__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 $spacing-lg;
   height: 56px;
-  background: $color-card-bg;
-  border-bottom: 1px solid $color-border;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
   flex: 0 0 auto;
   min-width: 0;
-  gap: $spacing-sm;
+  z-index: 20;
+}
+
+.public-chat-view__header-inner {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .public-chat-view__header-info {
   display: flex;
   align-items: center;
-  gap: $spacing-sm;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -246,45 +272,61 @@ onUnmounted(() => {
 .public-chat-view__brand {
   display: flex;
   align-items: center;
-  gap: $spacing-sm;
+  gap: 10px;
   min-width: 0;
 }
 
 .public-chat-view__title {
-  font-size: $font-size-lg;
+  font-size: 15px;
   font-weight: 600;
-  color: $color-text-primary;
+  color: #0F172A;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.2px;
 }
 
 .public-chat-view__status {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: $font-size-xs;
-  color: $color-success;
+  font-size: 12px;
+  color: #16A34A;
   flex-shrink: 0;
+  padding: 2px 10px;
+  background: #F0FDF4;
+  border-radius: 20px;
 
   .status-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: $color-success;
+    background: #16A34A;
     flex-shrink: 0;
+    animation: statusPulse 2s ease-in-out infinite;
   }
 }
 
-// ---- 消息区 ----
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+// ================================================================
+// 消息区
+// ================================================================
 .public-chat-view__messages {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: $spacing-lg;
+  padding: 0;
+
+  &--has-content {
+    padding: 24px;
+  }
 }
 
 .public-chat-view__message-list {
@@ -299,21 +341,20 @@ onUnmounted(() => {
 .public-chat-view__system-msg {
   text-align: center;
   padding: 8px 16px;
-  margin: $spacing-md 0;
-  font-size: $font-size-sm;
-  color: $color-text-tertiary;
-  background: #f0f4ff;
+  margin: 16px 0;
+  font-size: 13px;
+  color: #94A3B8;
+  background: rgba(255, 255, 255, 0.7);
   border-radius: 8px;
   max-width: 500px;
   margin-left: auto;
   margin-right: auto;
+  backdrop-filter: blur(4px);
 }
 
-// ---- 回到底部 ----
-.public-chat-view {
-  position: relative;
-}
-
+// ================================================================
+// 回到底部按钮
+// ================================================================
 .public-chat-view__scroll-btn {
   position: absolute;
   bottom: 140px;
@@ -322,49 +363,169 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: $color-card-bg;
-  box-shadow: $shadow-dropdown;
+  background: #FFFFFF;
+  box-shadow: 0 2px 12px rgba(16, 24, 40, 0.1), 0 0 0 1px rgba(229, 231, 235, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 10;
-  color: $color-text-secondary;
-  transition: all $transition-fast;
+  color: #64748B;
+  transition: all 0.2s ease;
 
   &:hover {
-    color: $color-primary;
-    box-shadow: 0 4px 20px rgba(16, 24, 40, 0.12);
+    color: #2563EB;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2), 0 0 0 1px rgba(37, 99, 235, 0.2);
+    transform: translateX(-50%) translateY(-2px);
   }
 
   &:focus-visible {
-    outline: 2px solid $color-primary;
+    outline: 2px solid #2563EB;
     outline-offset: 2px;
   }
 }
 
-// ---- 输入区 ----
+.scroll-btn-fade-enter-active,
+.scroll-btn-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.scroll-btn-fade-enter-from,
+.scroll-btn-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+}
+
+// ================================================================
+// 输入区 — ChatGPT 风格深度定制
+// ================================================================
 .public-chat-view__input {
   flex: 0 0 auto;
-  padding: 0 $spacing-lg $spacing-sm;
-  background: $color-page-bg;
+  padding: 0 24px 16px;
+  background: transparent;
 
   :deep(.chat-input) {
-    width: min(100%, 960px);
+    width: min(100%, 800px);
     margin: 0 auto;
+  }
+
+  // 客服提示
+  :deep(.chat-input__hint) {
+    font-size: 11px;
+    color: #94A3B8;
+  }
+
+  // 输入框容器 — 大圆角 + 阴影
+  :deep(.chat-input__wrapper) {
+    background: #FFFFFF;
+    border-radius: 20px;
+    box-shadow:
+      0 4px 16px rgba(16, 24, 40, 0.06),
+      0 0 0 1px rgba(229, 231, 235, 0.8);
+    padding: 12px 16px;
+    transition: box-shadow 0.2s ease;
+
+    &:focus-within {
+      box-shadow:
+        0 4px 24px rgba(37, 99, 235, 0.12),
+        0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
+  }
+
+  // 隐藏 Element textarea 默认边框
+  :deep(.el-textarea__inner) {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent;
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 4px 0;
+    min-height: 28px;
+    max-height: 160px;
+    color: #334155;
+    resize: none;
+
+    &::placeholder {
+      color: #94A3B8;
+    }
+
+    &:focus {
+      box-shadow: none !important;
+      border: none !important;
+    }
+  }
+
+  // 底部工具栏
+  :deep(.chat-input__footer) {
+    border-top-color: #F1F5F9;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  // 发送按钮 — 圆润风格
+  :deep(.chat-input__send-btn) {
+    border-radius: 10px !important;
+    padding: 6px 18px !important;
+    font-weight: 500;
+    font-size: 13px;
+    background: #2563EB !important;
+    border-color: #2563EB !important;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      background: #1D4ED8 !important;
+      border-color: #1D4ED8 !important;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+    }
+  }
+
+  :deep(.el-button--primary) {
+    --el-button-bg-color: #2563EB;
+    --el-button-border-color: #2563EB;
+    --el-button-hover-bg-color: #1D4ED8;
+    --el-button-hover-border-color: #1D4ED8;
   }
 }
 
 // ================================================================
-// 平板端适配
+// 免责声明
 // ================================================================
-@media (min-width: 768px) and (max-width: 1199px) {
-  .public-chat-view__header {
-    padding: 0 $spacing-md;
+.public-chat-view__disclaimer {
+  width: min(100%, 960px);
+  margin: 0 auto;
+  font-size: 11px;
+  color: #B0B8C1;
+  text-align: left;
+  padding: 2px 0 16px 56px;
+
+  .disclaimer-divider {
+    width: 100%;
+    height: 1px;
+    background: #EEF0F2;
+    margin-bottom: 8px;
   }
 
-  .public-chat-view__messages {
-    padding: $spacing-md;
+  p {
+    margin: 1px 0;
+    line-height: 1.4;
+  }
+}
+
+// ================================================================
+// 平板端适配 (768px - 1199px)
+// ================================================================
+@media (min-width: 768px) and (max-width: 1199px) {
+  .public-chat-view__header-inner {
+    max-width: 800px;
+    padding: 0 20px;
+  }
+
+  .public-chat-view__messages--has-content {
+    padding: 20px;
   }
 
   .public-chat-view__message-list {
@@ -377,7 +538,7 @@ onUnmounted(() => {
   }
 
   .public-chat-view__input {
-    padding: 0 $spacing-md $spacing-sm;
+    padding: 0 20px 12px;
 
     :deep(.chat-input) {
       width: min(100%, 800px);
@@ -386,12 +547,15 @@ onUnmounted(() => {
 }
 
 // ================================================================
-// 移动端适配
+// 移动端适配 (< 768px)
 // ================================================================
 @media (max-width: 767px) {
   .public-chat-view__header {
-    padding: 0 $spacing-sm;
     height: 52px;
+  }
+
+  .public-chat-view__header-inner {
+    padding: 0 16px;
   }
 
   .public-chat-view__logo {
@@ -401,15 +565,20 @@ onUnmounted(() => {
   }
 
   .public-chat-view__title {
-    font-size: $font-size-sm;
+    font-size: 14px;
+  }
+
+  .public-chat-view__status {
+    padding: 1px 8px;
+    font-size: 11px;
   }
 
   .public-chat-view__status-text {
     display: none;
   }
 
-  .public-chat-view__messages {
-    padding: $spacing-sm;
+  .public-chat-view__messages--has-content {
+    padding: 12px;
   }
 
   .public-chat-view__message-list {
@@ -420,7 +589,7 @@ onUnmounted(() => {
     width: 100%;
     padding-left: 10px;
     font-size: 10px;
-    color: #c0c8d0;
+    color: #C0C8D0;
   }
 
   .public-chat-view__scroll-btn {
@@ -428,39 +597,52 @@ onUnmounted(() => {
   }
 
   .public-chat-view__input {
-    padding: 0 $spacing-sm;
-    padding-bottom: max($spacing-sm, env(safe-area-inset-bottom, 8px));
+    padding: 0 12px 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 8px));
 
     :deep(.chat-input) {
       width: 100%;
     }
+
+    :deep(.chat-input__wrapper) {
+      border-radius: 16px;
+      padding: 10px 14px;
+    }
+
+    :deep(.el-textarea__inner) {
+      font-size: 16px; // 防止 iOS 缩放
+    }
+
+    :deep(.chat-input__send-btn) {
+      border-radius: 50% !important;
+      padding: 0 !important;
+      min-width: 36px;
+      min-height: 36px;
+    }
+
+    :deep(.chat-input__send-text) {
+      display: none;
+    }
+
+    :deep(.chat-input__send-icon) {
+      display: block;
+    }
   }
 }
 
-// ---- 助手回复免责声明 ----
-.public-chat-view__disclaimer {
-  width: min(100%, 960px);
-  margin: 0 auto;
-  font-size: 11px;
-  color: #b0b8c1;
-  text-align: left;
-  padding: 2px 0 $spacing-md 56px;
-
-  .disclaimer-divider {
-    width: 100%;
-    height: 1px;
-    background: #eef0f2;
-    margin-bottom: $spacing-xs;
-  }
-
-  p {
-    margin: 1px 0;
-    line-height: 1.4;
-  }
-}
-
+// ================================================================
+// prefers-reduced-motion
+// ================================================================
 @media (prefers-reduced-motion: reduce) {
+  .public-chat-view__status .status-dot {
+    animation: none;
+  }
+
   .public-chat-view__scroll-btn {
+    transition: none;
+  }
+
+  :deep(.chat-input__wrapper) {
     transition: none;
   }
 }
