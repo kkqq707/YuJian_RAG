@@ -14,7 +14,7 @@ import secrets
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -152,8 +152,31 @@ class Settings(BaseSettings):
     RATE_LIMIT_HEALTH_PER_MINUTE: int = 300
 
     # ---- 游客聊天 ----
-    PUBLIC_CHAT_ALLOWED_HOSTS: list[str] = []
+    # 原始环境变量字符串（逗号分隔），通过 alias 映射到 PUBLIC_CHAT_ALLOWED_HOSTS
+    # 使用 str 类型避免 pydantic-settings 对 list[str] 的 json.loads() 解析
+    # （json.loads() 不兼容逗号分隔字符串和空字符串，会导致 SettingsError）
+    PUBLIC_CHAT_HOSTS_RAW: str = Field(
+        default="",
+        alias="PUBLIC_CHAT_ALLOWED_HOSTS",
+        description="逗号分隔的允许域名/IP，如 localhost,127.0.0.1,ai.yujiankeji.asia。* 允许所有。",
+    )
     RATE_LIMIT_PUBLIC_CHAT_PER_MINUTE: int = 10
+
+    @property
+    def PUBLIC_CHAT_ALLOWED_HOSTS(self) -> list[str]:
+        """解析白名单字符串为 list[str]（向后兼容原有 list[str] 访问）。
+
+        支持格式:
+        - 空字符串 → []
+        - 逗号分隔: "localhost,127.0.0.1" → ["localhost", "127.0.0.1"]
+        - 单个值如 "*" → ["*"]
+        """
+        stripped = self.PUBLIC_CHAT_HOSTS_RAW.strip()
+        if not stripped:
+            return []
+        if stripped == "*":
+            return ["*"]
+        return [item.strip() for item in stripped.split(",") if item.strip()]
 
     # ---- 日志目录 ----
     @property

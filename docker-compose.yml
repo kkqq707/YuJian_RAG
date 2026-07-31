@@ -44,7 +44,6 @@ services:
       - .env.production
     environment:
       - ANONYMIZED_TELEMETRY=false
-      - PUBLIC_CHAT_ALLOWED_HOSTS=${PUBLIC_CHAT_ALLOWED_HOSTS:-}
 
     volumes:
       # 模型持久化（Embedding + Reranker）
