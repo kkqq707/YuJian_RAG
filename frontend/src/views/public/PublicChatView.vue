@@ -7,7 +7,7 @@
       <div class="public-chat-view__header-inner">
         <div class="public-chat-view__header-info">
           <img
-            src="/image/logo.png"
+            src="/image/logo02.png"
             alt="煜见科技"
             class="public-chat-view__logo"
           />

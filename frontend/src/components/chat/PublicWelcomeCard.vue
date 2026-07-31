@@ -2,7 +2,7 @@
   <div class="public-welcome">
     <!-- Logo -->
     <div class="public-welcome__logo">
-      <img src="/image/logo.png" alt="煜见科技" class="public-welcome__logo-img" />
+      <img src="/image/logo01.png" alt="煜见科技" class="public-welcome__logo-img" />
     </div>
 
     <!-- 标题 -->

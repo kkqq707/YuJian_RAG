@@ -7,7 +7,7 @@
       <!-- Logo 白色卡片容器 -->
       <div class="welcome-hero__logo-card">
         <img
-          src="/image/logo.png"
+          src="/image/logo01.png"
           alt="煜见科技"
           class="welcome-hero__logo"
         />
