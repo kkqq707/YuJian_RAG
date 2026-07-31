@@ -246,7 +246,7 @@ onUnmounted(() => {
 
 .public-chat-view__header-inner {
   width: 100%;
-  max-width: 960px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 0 24px;
   display: flex;
@@ -405,7 +405,7 @@ onUnmounted(() => {
   background: transparent;
 
   :deep(.chat-input) {
-    width: min(100%, 800px);
+    width: min(100%, 900px);
     margin: 0 auto;
   }
 
