@@ -151,6 +151,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_UPLOAD_PER_MINUTE: int = 10
     RATE_LIMIT_HEALTH_PER_MINUTE: int = 300
 
+    # ---- 游客聊天 ----
+    PUBLIC_CHAT_ALLOWED_HOSTS: list[str] = []
+    RATE_LIMIT_PUBLIC_CHAT_PER_MINUTE: int = 10
+
     # ---- 日志目录 ----
     @property
     def LOG_DIR(self) -> Path:

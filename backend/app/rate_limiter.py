@@ -112,6 +112,13 @@ def _get_rules_from_config() -> dict[str, RateLimitRule]:
             description="健康检查限流（高额度）",
         ),
 
+        # ---- 游客聊天 ----
+        "public_chat": RateLimitRule(
+            max_requests=_get("RATE_LIMIT_PUBLIC_CHAT_PER_MINUTE", 10),
+            window_seconds=60,
+            description="游客聊天限流（IP 级别）",
+        ),
+
         # ---- 系统监控 ----
         "system_monitor": RateLimitRule(
             max_requests=30, window_seconds=60,

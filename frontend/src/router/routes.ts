@@ -105,6 +105,15 @@ const routes: RouteRecordRaw[] = [
       title: '登录',
     },
   },
+  {
+    path: '/ai',
+    name: 'PublicChat',
+    component: () => import('@/views/public/PublicChatView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'AI 智能助手',
+    },
+  },
 
   // ============================================================
   // Admin Layout (管理员专属)

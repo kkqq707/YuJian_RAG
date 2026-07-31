@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from backend.app.api.routes import admin_api_config, admin_document_tasks, admin_files, admin_rag_config, admin_ragas, admin_system, admin_users, auth, chat, health, system
+from backend.app.api.routes import admin_api_config, admin_document_tasks, admin_files, admin_rag_config, admin_ragas, admin_system, admin_users, auth, chat, health, public_chat, system
 from backend.app.config import get_settings
 
 settings = get_settings()
@@ -13,6 +13,7 @@ api_router = APIRouter(prefix=settings.API_PREFIX)
 
 # 公开端点
 api_router.include_router(health.router)
+api_router.include_router(public_chat.router)
 # 需登录端点
 api_router.include_router(system.router)
 api_router.include_router(chat.router)
