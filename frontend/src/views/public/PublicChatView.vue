@@ -65,7 +65,7 @@
             :message="msg"
             :sending="store.sending"
             :is-mobile="isMobile"
-            @retry="handleRetry"
+            @retry="handleRetry(msg)"
           />
         </div>
       </div>

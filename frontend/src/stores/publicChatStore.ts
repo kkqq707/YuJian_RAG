@@ -27,6 +27,7 @@ export interface PublicChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  createdAt: string
   status: 'success' | 'sending' | 'error'
   errorMessage?: string | null
   latencySeconds?: number | null
@@ -61,6 +62,7 @@ export const usePublicChatStore = defineStore('publicChat', () => {
       id: `user_${Date.now()}`,
       role: 'user',
       content: trimmed,
+      createdAt: new Date().toISOString(),
       status: 'success',
     })
 
@@ -69,6 +71,7 @@ export const usePublicChatStore = defineStore('publicChat', () => {
       id: `asst_${Date.now()}`,
       role: 'assistant',
       content: '',
+      createdAt: new Date().toISOString(),
       status: 'sending',
     }
     messages.value.push(assistantMsg)
