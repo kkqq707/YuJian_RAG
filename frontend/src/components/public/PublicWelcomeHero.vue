@@ -17,7 +17,7 @@
       </h1>
       <p class="welcome-hero__highlight">AI 智能助手</p>
       <p class="welcome-hero__subtitle">
-        我可以基于企业知识库，为您解答业务、产品、技术方案等问题。
+        基于企业知识库，为您解答业务、产品、技术方案等问题。
       </p>
     </div>
 
@@ -105,7 +105,7 @@ const quickPrompts = [
 @keyframes heroFadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(24px);
   }
   to {
     opacity: 1;
@@ -121,8 +121,8 @@ const quickPrompts = [
   }
   50% {
     box-shadow:
-      0 4px 24px rgba(37, 99, 235, 0.10),
-      0 1px 6px rgba(16, 24, 40, 0.06);
+      0 4px 24px rgba(37, 99, 235, 0.12),
+      0 1px 8px rgba(16, 24, 40, 0.06);
   }
 }
 
@@ -135,114 +135,113 @@ const quickPrompts = [
   align-items: center;
   justify-content: center;
   padding: 0 24px;
-  max-width: 720px;
+  max-width: 740px;
   margin: 0 auto;
   width: 100%;
   min-height: 100%;
-  animation: heroFadeIn 0.5s ease;
+  animation: heroFadeIn 0.6s ease;
 }
 
 // ================================================================
-// Hero Brand — Logo卡片 + 标题 + 副标题
+// Hero Brand — Logo + 标题 + 副标题
 // ================================================================
 .welcome-hero__brand {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 48px;
 }
 
-// Logo 白色卡片容器
+// Logo 白色卡片 — 缩小外层留白，图像占主体
 .welcome-hero__logo-card {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 96px;
-  height: 96px;
+  width: 80px;
+  height: 80px;
   background: #FFFFFF;
-  border-radius: 24px;
+  border-radius: 20px;
   margin-bottom: 32px;
   animation: logoCardGlow 4s ease-in-out infinite;
 }
 
 .welcome-hero__logo {
-  width: 72px;
-  height: 72px;
+  width: 58px;
+  height: 58px;
   object-fit: contain;
-  border-radius: 16px;
+  border-radius: 14px;
 }
 
+// 标题: "您好，我是煜见科技" — 32px #111827
 .welcome-hero__title {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 700;
-  color: #0F172A;
+  color: #111827;
   margin: 0;
-  line-height: 1.4;
-  letter-spacing: -0.4px;
+  line-height: 1.35;
+  letter-spacing: -0.5px;
 }
 
+// "AI 智能助手" — 36px 品牌蓝色
 .welcome-hero__highlight {
-  font-size: 30px;
+  font-size: 36px;
   font-weight: 700;
-  margin: 0;
-  line-height: 1.4;
-  letter-spacing: -0.4px;
-  background: linear-gradient(135deg, #2563EB 0%, #6366F1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #2563EB;
+  margin: 4px 0 0;
+  line-height: 1.35;
+  letter-spacing: -0.5px;
 }
 
+// 副标题
 .welcome-hero__subtitle {
   font-size: 15px;
   color: #94A3B8;
-  margin: 18px 0 0;
+  margin: 20px 0 0;
   line-height: 1.7;
   font-weight: 400;
   max-width: 480px;
 }
 
 // ================================================================
-// 推荐问题按钮
+// 推荐问题 — 2列网格
 // ================================================================
 .welcome-hero__quick-prompts {
   width: 100%;
-  max-width: 580px;
+  max-width: 640px;
 }
 
 .welcome-hero__quick-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
 .quick-prompt-btn {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
-  padding: 16px 20px;
+  height: 90px;
+  padding: 16px 18px;
   background: #FFFFFF;
-  border: 1px solid #F1F5F9;
+  border: 1.5px solid transparent;
   border-radius: 16px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s ease;
   font-family: inherit;
   text-align: left;
   color: #334155;
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+  box-shadow:
+    0 1px 3px rgba(16, 24, 40, 0.04),
+    0 0 0 1px rgba(229, 231, 235, 0.4);
 
   &:hover:not(:disabled) {
-    border-color: #BFDBFE;
-    box-shadow: 0 6px 24px rgba(37, 99, 235, 0.10);
+    border-color: #93C5FD;
+    box-shadow:
+      0 8px 24px rgba(37, 99, 235, 0.10),
+      0 2px 6px rgba(16, 24, 40, 0.06);
     transform: translateY(-2px);
 
     .quick-prompt-btn__label {
       color: #2563EB;
-    }
-
-    .quick-prompt-btn__arrow {
-      opacity: 1;
-      color: #2563EB;
-      transform: translateX(2px);
     }
   }
 
@@ -264,10 +263,10 @@ const quickPrompts = [
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.25s ease;
+  transition: transform 0.3s ease;
 
   .quick-prompt-btn:hover & {
-    transform: scale(1.05);
+    transform: scale(1.06);
   }
 }
 
@@ -287,17 +286,15 @@ const quickPrompts = [
 
 .quick-prompt-btn__desc {
   display: block;
-  font-size: 13px;
+  font-size: 12.5px;
   color: #94A3B8;
-  margin-top: 3px;
+  margin-top: 4px;
   line-height: 1.4;
 }
 
+// 隐藏箭头（2列卡片不需要箭头）
 .quick-prompt-btn__arrow {
-  color: #CBD5E1;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: all 0.25s ease;
+  display: none;
 }
 
 // ================================================================
@@ -306,33 +303,42 @@ const quickPrompts = [
 @media (min-width: 768px) and (max-width: 1199px) {
   .welcome-hero {
     padding: 0 20px;
-    max-width: 600px;
+    max-width: 640px;
   }
 
   .welcome-hero__logo-card {
-    width: 84px;
-    height: 84px;
-    border-radius: 20px;
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
     margin-bottom: 28px;
   }
 
   .welcome-hero__logo {
-    width: 63px;
-    height: 63px;
-    border-radius: 14px;
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
   }
 
-  .welcome-hero__title,
+  .welcome-hero__title {
+    font-size: 28px;
+  }
+
   .welcome-hero__highlight {
-    font-size: 26px;
+    font-size: 32px;
   }
 
   .welcome-hero__subtitle {
     font-size: 14px;
   }
 
+  .welcome-hero__quick-prompts {
+    max-width: 560px;
+  }
+
   .quick-prompt-btn {
-    padding: 14px 18px;
+    height: 84px;
+    padding: 14px 16px;
+    gap: 12px;
   }
 
   .quick-prompt-btn__icon {
@@ -350,43 +356,55 @@ const quickPrompts = [
     padding: 0 16px;
     max-width: 100%;
     justify-content: flex-start;
-    padding-top: 24px;
+    padding-top: 28px;
   }
 
   .welcome-hero__brand {
-    margin-bottom: 28px;
+    margin-bottom: 32px;
   }
 
   .welcome-hero__logo-card {
-    width: 72px;
-    height: 72px;
-    border-radius: 18px;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
     margin-bottom: 24px;
   }
 
   .welcome-hero__logo {
-    width: 54px;
-    height: 54px;
-    border-radius: 12px;
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
   }
 
-  .welcome-hero__title,
+  .welcome-hero__title {
+    font-size: 24px;
+    letter-spacing: -0.3px;
+  }
+
   .welcome-hero__highlight {
-    font-size: 22px;
+    font-size: 28px;
     letter-spacing: -0.3px;
   }
 
   .welcome-hero__subtitle {
     font-size: 13px;
-    margin-top: 14px;
+    margin-top: 16px;
     max-width: 320px;
   }
 
+  // 移动端：推荐问题变1列
   .welcome-hero__quick-prompts {
     max-width: 100%;
   }
 
+  .welcome-hero__quick-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
   .quick-prompt-btn {
+    height: auto;
+    min-height: 78px;
     padding: 14px 16px;
     gap: 14px;
     border-radius: 14px;
@@ -404,10 +422,6 @@ const quickPrompts = [
 
   .quick-prompt-btn__desc {
     font-size: 12px;
-  }
-
-  .quick-prompt-btn__arrow {
-    opacity: 0.3;
   }
 }
 

@@ -224,7 +224,9 @@ onUnmounted(() => {
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: linear-gradient(180deg, #F0F5FF 0%, #F8FAFE 30%, #F0F5FF 70%, #F8FAFE 100%);
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(37, 99, 235, 0.04) 0%, transparent 70%),
+    linear-gradient(180deg, #f8fbff 0%, #eef5ff 50%, #f5f8fd 100%);
   position: relative;
 }
 
@@ -234,11 +236,11 @@ onUnmounted(() => {
 .public-chat-view__header {
   display: flex;
   align-items: center;
-  height: 56px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+  height: 64px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
   flex: 0 0 auto;
   min-width: 0;
   z-index: 20;
@@ -401,36 +403,39 @@ onUnmounted(() => {
 // ================================================================
 .public-chat-view__input {
   flex: 0 0 auto;
-  padding: 0 24px 16px;
+  padding: 0 24px 20px;
   background: transparent;
 
   :deep(.chat-input) {
-    width: min(100%, 900px);
+    width: min(100%, 800px);
     margin: 0 auto;
   }
 
-  // 客服提示
+  // 输入提示
   :deep(.chat-input__hint) {
-    font-size: 11px;
+    font-size: 12px;
     color: #94A3B8;
   }
 
-  // 输入框容器 — 大圆角 + 阴影 + AI 科技感
+  // 输入框容器 — 柔和圆角 + 阴影
   :deep(.chat-input__wrapper) {
     background: #FFFFFF;
-    border-radius: 24px;
+    border-radius: 20px;
     box-shadow:
-      0 8px 30px rgba(16, 24, 40, 0.08),
-      0 2px 8px rgba(16, 24, 40, 0.04),
-      0 0 0 1px rgba(37, 99, 235, 0.08);
-    padding: 14px 20px;
+      0 4px 20px rgba(16, 24, 40, 0.06),
+      0 1px 4px rgba(16, 24, 40, 0.04),
+      0 0 0 1px rgba(229, 231, 235, 0.4);
+    padding: 16px 20px;
+    min-height: 110px;
+    display: flex;
+    flex-direction: column;
     transition: all 0.25s ease;
 
     &:focus-within {
       box-shadow:
-        0 8px 36px rgba(37, 99, 235, 0.14),
-        0 2px 12px rgba(37, 99, 235, 0.06),
-        0 0 0 2px rgba(37, 99, 235, 0.15);
+        0 4px 24px rgba(37, 99, 235, 0.12),
+        0 2px 8px rgba(37, 99, 235, 0.06),
+        0 0 0 2px rgba(37, 99, 235, 0.12);
     }
   }
 
@@ -446,6 +451,7 @@ onUnmounted(() => {
     max-height: 160px;
     color: #334155;
     resize: none;
+    flex: 1;
 
     &::placeholder {
       color: #94A3B8;
@@ -464,32 +470,29 @@ onUnmounted(() => {
     padding-top: 8px;
   }
 
-  // 发送按钮 — 圆润风格
+  // 发送按钮 — 蓝色渐变 + 圆角12px
   :deep(.chat-input__send-btn) {
-    border-radius: 10px !important;
-    padding: 6px 18px !important;
+    border-radius: 12px !important;
+    padding: 7px 20px !important;
     font-weight: 500;
     font-size: 13px;
-    background: #2563EB !important;
-    border-color: #2563EB !important;
-    transition: all 0.2s ease;
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%) !important;
+    border: none !important;
+    transition: all 0.25s ease;
 
     &:hover:not(:disabled) {
-      background: #1D4ED8 !important;
-      border-color: #1D4ED8 !important;
-      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+      background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%) !important;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
     }
 
     &:disabled {
       opacity: 0.4;
     }
-  }
-
-  :deep(.el-button--primary) {
-    --el-button-bg-color: #2563EB;
-    --el-button-border-color: #2563EB;
-    --el-button-hover-bg-color: #1D4ED8;
-    --el-button-hover-border-color: #1D4ED8;
   }
 }
 
@@ -497,12 +500,12 @@ onUnmounted(() => {
 // 免责声明
 // ================================================================
 .public-chat-view__disclaimer {
-  width: min(100%, 960px);
+  width: min(100%, 800px);
   margin: 0 auto;
-  font-size: 11px;
-  color: #B0B8C1;
-  text-align: left;
-  padding: 2px 0 16px 56px;
+  font-size: 12px;
+  color: #94A3B8;
+  text-align: center;
+  padding: 4px 0 16px 0;
 
   .disclaimer-divider {
     width: 100%;
@@ -513,7 +516,7 @@ onUnmounted(() => {
 
   p {
     margin: 1px 0;
-    line-height: 1.4;
+    line-height: 1.5;
   }
 }
 
@@ -536,14 +539,13 @@ onUnmounted(() => {
 
   .public-chat-view__disclaimer {
     width: min(100%, 800px);
-    padding-left: 48px;
   }
 
   .public-chat-view__input {
-    padding: 0 20px 12px;
+    padding: 0 20px 16px;
 
     :deep(.chat-input) {
-      width: min(100%, 800px);
+      width: min(100%, 700px);
     }
   }
 }
@@ -553,7 +555,7 @@ onUnmounted(() => {
 // ================================================================
 @media (max-width: 767px) {
   .public-chat-view__header {
-    height: 52px;
+    height: 56px;
   }
 
   .public-chat-view__header-inner {
@@ -589,26 +591,26 @@ onUnmounted(() => {
 
   .public-chat-view__disclaimer {
     width: 100%;
-    padding-left: 10px;
-    font-size: 10px;
-    color: #C0C8D0;
+    font-size: 11px;
+    padding: 2px 12px 12px;
   }
 
   .public-chat-view__scroll-btn {
-    bottom: 120px;
+    bottom: 130px;
   }
 
   .public-chat-view__input {
-    padding: 0 12px 12px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom, 8px));
+    padding: 0 12px 14px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom, 8px));
 
     :deep(.chat-input) {
       width: 100%;
     }
 
     :deep(.chat-input__wrapper) {
-      border-radius: 20px;
-      padding: 10px 14px;
+      border-radius: 16px;
+      padding: 12px 14px;
+      min-height: auto;
     }
 
     :deep(.el-textarea__inner) {
@@ -616,10 +618,10 @@ onUnmounted(() => {
     }
 
     :deep(.chat-input__send-btn) {
-      border-radius: 50% !important;
+      border-radius: 12px !important;
       padding: 0 !important;
-      min-width: 36px;
-      min-height: 36px;
+      min-width: 38px;
+      min-height: 38px;
     }
 
     :deep(.chat-input__send-text) {

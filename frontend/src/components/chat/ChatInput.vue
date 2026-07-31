@@ -181,8 +181,8 @@ defineExpose({ clear, setText })
 }
 
 .chat-input__hint {
-  font-size: $font-size-xs;
-  color: $color-text-tertiary;
+  font-size: 12px;
+  color: #94A3B8;
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -217,7 +217,8 @@ defineExpose({ clear, setText })
   }
 
   .chat-input__hint {
-    font-size: 11px;
+    font-size: 12px;
+    color: #94A3B8;
     line-height: 1.4;
   }
 
